@@ -1,0 +1,32 @@
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/main"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:padding="20dp">
+
+    <TextView
+        android:id="@+id/popup_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Choose Activity" />
+
+    <Button
+        android:id="@+id/btn_youtube"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="YouTube" />
+
+    <Button
+        android:id="@+id/btn_meditation"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Meditation" />
+
+    <Button
+        android:id="@+id/btn_gym"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Gym" />
+</LinearLayout>

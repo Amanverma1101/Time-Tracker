@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">TimeTracker</string>
+    <string name="appwidget_text">EXAMPLE</string>
+    <string name="add_widget">Add widget</string>
+    <string name="app_widget_description">This is an app widget description</string>
+    <string-array name="choices_array">
+        <item>Option 1</item>
+        <item>Option 2</item>
+        <item>Option 3</item>
+    </string-array>
+</resources>
+
