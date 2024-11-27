@@ -317,10 +317,23 @@
         android:background="@drawable/rounded_widget_background" />
 
 
+
+    <TextView
+        android:id="@+id/timer_display"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="8dp"
+        android:background="@drawable/rounded_widget_background"
+        android:gravity="center"
+        android:padding="8dp"
+        android:text="00:00"
+        android:textColor="#000080"
+        android:textSize="14sp" />
+
+    <!-- Start Timer Button -->
     <Button
-            android:id="@+id/btnOpenPopup"
-            android:layout_width="130dp"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:text="Open Popup" />
+        android:id="@+id/start_timer_btn"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Start Timer" />
         </LinearLayout>

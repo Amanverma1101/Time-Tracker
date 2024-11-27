@@ -19,8 +19,9 @@
             android:name=".TimeTrackerWidget"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.example.timetracker.UPDATE_BOX" />
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.example.timetracker.START_TIMER_ACTION" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"

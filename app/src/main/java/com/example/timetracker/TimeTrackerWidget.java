@@ -5,9 +5,14 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
 import android.net.Uri;
+import android.os.CountDownTimer;
+import android.os.Handler;
 import android.util.Log;
 import android.widget.RemoteViews;
+import android.widget.Toast;
 
 public class TimeTrackerWidget extends AppWidgetProvider {
 
@@ -30,11 +35,18 @@ public class TimeTrackerWidget extends AppWidgetProvider {
                 Intent popupIntent = new Intent(context, PopupActivity.class);
                 popupIntent.putExtra("BOX_POSITION", i + 1);
                 popupIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-
                 PendingIntent pendingIntent = PendingIntent.getActivity(
                         context, i, popupIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
                 views.setOnClickPendingIntent(boxIds[i], pendingIntent);
             }
+
+            Intent timerIntent = new Intent(context, TimeTrackerWidget.class);
+            timerIntent.setAction("com.example.timetracker.START_TIMER_ACTION");
+            timerIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+
+            PendingIntent timerPendingIntent = PendingIntent.getBroadcast(
+                    context, appWidgetId, timerIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            views.setOnClickPendingIntent(R.id.start_timer_btn, timerPendingIntent);
 
             appWidgetManager.updateAppWidget(appWidgetId, views);
         }
@@ -56,17 +68,6 @@ public class TimeTrackerWidget extends AppWidgetProvider {
                 popupIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK); // Ensure the popup opens properly
                 context.startActivity(popupIntent);
             }
-        }
-        else {
-            super.onReceive(context, intent); // Handle default behavior
-        }
-        if ("com.example.timetracker.BUTTON_CLICK".equals(action)) {
-            Log.d("WidgetReceiver", "Button clicked");
-
-            // Open PopupActivity from button click
-            Intent popupIntent = new Intent(context, PopupActivity.class);
-            popupIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            context.startActivity(popupIntent);
         }
         else {
             super.onReceive(context, intent); // Handle default behavior
@@ -96,6 +97,69 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         }
         else {
             super.onReceive(context, intent); // Handle default behavior
+        }
+
+        if ("com.example.timetracker.START_TIMER_ACTION".equals(intent.getAction())) {
+            int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+                handleTimerStart(context, appWidgetId);
+            }
+        }
+    }
+
+    private void handleTimerStart(Context context, int appWidgetId) {
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.time_tracker_widget);
+
+        // Initialize the timer duration (1 minute)
+        int timerDuration = 60; // in seconds
+
+        // Use a CountDownTimer for live updates
+        new CountDownTimer(timerDuration * 1000, 1000) {
+            int secondsRemaining = timerDuration;
+
+            @Override
+            public void onTick(long millisUntilFinished) {
+                // Update the TextView with the remaining time
+                secondsRemaining--;
+                String timerText = String.format("%02d:%02d", secondsRemaining / 60, secondsRemaining % 60);
+                views.setTextViewText(R.id.timer_display, timerText);
+                AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
+            }
+
+            @Override
+            public void onFinish() {
+                // Reset the TextView
+                views.setTextViewText(R.id.timer_display, "00:00");
+                AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
+
+                // Show a toast
+                Toast.makeText(context, "1 minute is over!", Toast.LENGTH_LONG).show();
+
+                // Play the buzzer sound
+                playBuzzer(context);
+            }
+        }.start();
+    }
+
+    private void playBuzzer(Context context) {
+        try {
+            // Get the default alarm tone URI
+            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+
+            // If no alarm tone is set, fall back to notification sound
+            if (alarmUri == null) {
+                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+            }
+
+            // Play the alarm tone
+            Ringtone ringtone = RingtoneManager.getRingtone(context, alarmUri);
+            ringtone.play();
+
+            // Optional: Stop the ringtone after a certain duration
+            new Handler().postDelayed(ringtone::stop, 5000); // Stops after 5 seconds
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(context, "Error playing alarm tone", Toast.LENGTH_SHORT).show();
         }
     }
 

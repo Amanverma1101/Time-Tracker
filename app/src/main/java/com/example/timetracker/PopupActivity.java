@@ -20,12 +20,6 @@ public class PopupActivity extends AppCompatActivity {
         Log.d("PopupActivityDebug", "PopupActivity started");
         setContentView(R.layout.dialog_layout);
 
-//        int boxPosition = getIntent().getIntExtra("BOX_POSITION", -1);
-//        Log.d("PopupActivityDebug", "BOX_POSITION: " + boxPosition);
-//
-//        super.onCreate(savedInstanceState);
-//        setContentView(R.layout.dialog_layout);
-
         // Get the box position passed to the popup
         int boxPosition = getIntent().getIntExtra("BOX_POSITION", -1);
         Log.d("PopupActivityDebug", "BOX_POSITION: " + boxPosition);
@@ -49,10 +43,13 @@ public class PopupActivity extends AppCompatActivity {
                 Toast.makeText(this, "Input cannot be empty!", Toast.LENGTH_SHORT).show();
             } else {
                 // Broadcast the input and number back to the widget
+//                Log.d("PopupActivityDebug", "selectedNumber1: " + selectedNumber);
+//                Log.d("PopupActivityDebug", "inputValue1: " + inputValue);
                 Intent updateIntent = new Intent("com.example.timetracker.UPDATE_BOX");
+                updateIntent.setComponent(new ComponentName(getApplicationContext(), TimeTrackerWidget.class));
                 updateIntent.putExtra("BOX_POSITION", boxPosition);
                 updateIntent.putExtra("INPUT_VALUE", inputValue + " (" + selectedNumber + ")");
-                sendBroadcast(updateIntent);
+                getApplicationContext().sendBroadcast(updateIntent);
                 finish();
             }
         });
