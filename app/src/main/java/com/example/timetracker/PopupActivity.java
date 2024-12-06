@@ -11,15 +11,26 @@ import android.widget.EditText;
 import android.widget.NumberPicker;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.ValueEventListener;
+
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 public class PopupActivity extends AppCompatActivity {
-
+    private FirebaseDatabase mDatabase;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Log.d("PopupActivityDebug", "PopupActivity started");
         setContentView(R.layout.dialog_layout);
 
+        mDatabase = FirebaseDatabase.getInstance();
         // Get the box position passed to the popup
         int boxPosition = getIntent().getIntExtra("BOX_POSITION", -1);
         Log.d("PopupActivityDebug", "BOX_POSITION: " + boxPosition);
@@ -37,6 +48,8 @@ public class PopupActivity extends AppCompatActivity {
         submitButton.setOnClickListener(v -> {
             String inputValue = inputField.getText().toString();
             int selectedNumber = numberPicker.getValue();
+            String selectedOption = String.valueOf(selectedNumber);
+            long timestamp = System.currentTimeMillis();
 //            Log.d("PopupActivityDebug", "selectedNumber: " + selectedNumber);
 //            Log.d("PopupActivityDebug", "inputValue: " + inputValue);
             if (inputValue.isEmpty()) {
@@ -50,6 +63,7 @@ public class PopupActivity extends AppCompatActivity {
                 updateIntent.putExtra("BOX_POSITION", boxPosition);
                 updateIntent.putExtra("INPUT_VALUE", inputValue + " (" + selectedNumber + ")");
                 getApplicationContext().sendBroadcast(updateIntent);
+                saveDataToFirebase(inputValue, selectedOption, boxPosition, timestamp);
                 finish();
             }
         });
@@ -72,4 +86,32 @@ public class PopupActivity extends AppCompatActivity {
             sendBroadcast(intent); // Send a broadcast for each widget ID
         }
     }
+
+
+    private void saveDataToFirebase(String inputValue, String selectedOption, int boxPosition, long timestamp) {
+        // Log data before pushing to Firebase
+        Log.d("FirebaseDebug", "Saving data: " + inputValue + ", " + selectedOption + ", " + timestamp);
+        String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
+
+        // Default user ID (replace with Firebase user ID if needed)
+        String userId = "user1";
+        if (mDatabase == null) {
+            Log.e("PopupActivityDebug", "FirebaseDatabase instance is null!");
+            return;
+        }
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("user_data").child(userId);
+        BoxData boxData = new BoxData(inputValue, selectedOption, timestamp);
+        databaseReference.child(currentDate).child("box" + boxPosition).setValue(boxData)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        Log.d("FirebaseDebug", "Data saved successfully!");
+                        Toast.makeText(this, "Data saved successfully", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Log.e("FirebaseDebug", "Error saving data", task.getException());
+                        Toast.makeText(this, "Error saving data", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+
 }
