@@ -11,6 +11,7 @@ import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.widget.RemoteViews;
 import android.widget.Toast;
@@ -25,6 +26,7 @@ public class TimeTrackerWidget extends AppWidgetProvider {
     private static int currentBoxId = -1; // Track the currently clicked box
     private static boolean[] timerRunning = new boolean[10]; // Flag to prevent multiple timers
 
+    public static boolean isRunningCurrently = false;
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
@@ -60,11 +62,12 @@ public class TimeTrackerWidget extends AppWidgetProvider {
             int boxId = intent.getIntExtra(EXTRA_POSITION, -1);
             int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
 
-            if (boxId != -1 && appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            if (boxId != -1 && appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID && !isRunningCurrently) {
                 Log.d("WidgetReceiver", "Box clicked: " + boxId);
 
                 // If the timer is not running, start it and set the current box
                 if (!timerRunning[boxId-1]) {
+//                    new Handler().postDelayed(() -> openPopup(context, boxId), 11000);
                     currentBoxId = boxId - 1;  // Store the clicked box ID (0-indexed)
                     startTimer(context, appWidgetId, boxId);
                 } else {
@@ -108,6 +111,7 @@ public class TimeTrackerWidget extends AppWidgetProvider {
 
     private void startTimer(Context context, int appWidgetId, int boxId) {
         timerRunning[boxId-1] = true;
+        isRunningCurrently = true;
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.time_tracker_widget);
         int timerDuration = 10; // Timer duration in seconds
 
@@ -132,12 +136,18 @@ public class TimeTrackerWidget extends AppWidgetProvider {
             public void onFinish() {
                 views.setTextViewText(R.id.timer_display, "00:00");
                 AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
+//                openPopup(context, boxId);
+
+                isRunningCurrently = false;
 
                 // Play the buzzer sound
                 playBuzzer(context);
 
                 // Apply border to the clicked box after the timer finishes
                 applyBorderToBox(context, appWidgetId, boxId); // Correctly pass appWidgetId
+
+//                openPopup(context, boxId);
+                triggerBoxClick(context, boxId, appWidgetId);
             }
         }.start();
     }
@@ -150,7 +160,7 @@ public class TimeTrackerWidget extends AppWidgetProvider {
                 R.id.box_6, R.id.box_7, R.id.box_8, R.id.box_9, R.id.box_10
         };
 
-        if (boxId >= 1 && boxId <= 10) {
+        if (boxId >= 1 && boxId <= 10 && !isRunningCurrently) {
             // Apply the yellow border to the correct box
             views.setInt(boxIds[boxId - 1], "setBackgroundResource", R.drawable.box_border);
             // Update the widget instance corresponding to appWidgetId
@@ -180,10 +190,30 @@ public class TimeTrackerWidget extends AppWidgetProvider {
 
     private void openPopup(Context context, int boxId) {
         // Open the popup after the timer ends and border is applied
+        Log.d("openPopup", "Popup Clicked: " + boxId);
         Intent popupIntent = new Intent(context, PopupActivity.class);
         popupIntent.putExtra("BOX_POSITION", boxId);
         popupIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-        context.startActivity(popupIntent);
+
+
+        try {
+            Log.d("openPopup", "Popup should come: " + boxId);
+            context.startActivity(popupIntent);
+        } catch (Exception e) {
+            Log.e("openPopup", "Error opening popup: ", e);
+        }
+    }
+
+
+    private void triggerBoxClick(Context context, int boxId, int appWidgetId) {
+        // Create an Intent for the ACTION_CLICK_BOX broadcast
+        Intent clickBoxIntent = new Intent(context, TimeTrackerWidget.class);
+        clickBoxIntent.setAction(ACTION_CLICK_BOX);
+        clickBoxIntent.putExtra(EXTRA_POSITION, boxId);
+        clickBoxIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+
+        // Send the broadcast to simulate the click
+        context.sendBroadcast(clickBoxIntent);
     }
 
     private int getBoxTextViewId(int boxPosition) {

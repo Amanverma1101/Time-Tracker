@@ -1,6 +1,8 @@
 package com.example.timetracker;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -11,6 +13,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -20,16 +23,18 @@ public class MainActivity extends AppCompatActivity {
     private FirebaseDatabase mDatabase;
     private TextView box1TextView, box2TextView, box3TextView, box4TextView, box5TextView;
     private TextView box6TextView, box7TextView, box8TextView, box9TextView, box10TextView;
+    private TextView tvCurrentDate;
+    private Button btnShowReports; // Button to view reports
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);  // Ensure the layout XML is set up correctly
+        setContentView(R.layout.activity_main);
 
         // Initialize Firebase
         mDatabase = FirebaseDatabase.getInstance();
 
-        // Initialize UI elements (TextViews for each box)
+        // Initialize UI elements (TextViews for each box and the button)
         box1TextView = findViewById(R.id.box_text_1);
         box2TextView = findViewById(R.id.box_text_2);
         box3TextView = findViewById(R.id.box_text_3);
@@ -40,7 +45,12 @@ public class MainActivity extends AppCompatActivity {
         box8TextView = findViewById(R.id.box_text_8);
         box9TextView = findViewById(R.id.box_text_9);
         box10TextView = findViewById(R.id.box_text_10);
+        tvCurrentDate = findViewById(R.id.tv_current_date);
+        btnShowReports = findViewById(R.id.btn_show_reports); // Initialize the button
 
+        // Set the current date
+        String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
+        tvCurrentDate.setText(currentDate);
 
         // Fetch data from Firebase for each box
         fetchData("box1", box1TextView);
@@ -53,11 +63,16 @@ public class MainActivity extends AppCompatActivity {
         fetchData("box8", box8TextView);
         fetchData("box9", box9TextView);
         fetchData("box10", box10TextView);
+
+        // Set up the button click listener to open ReportActivity
+        btnShowReports.setOnClickListener(v -> {
+            Intent intent = new Intent(MainActivity.this, ReportActivity.class);
+            startActivity(intent);
+        });
     }
 
     // Method to fetch data from Firebase and update the UI
     private void fetchData(String boxId, TextView boxTextView) {
-
         String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
         String userId = "user1";
 
@@ -66,20 +81,16 @@ public class MainActivity extends AppCompatActivity {
                 .child(currentDate)
                 .child(boxId);
 
-        // Listen for changes to the specified box (e.g., box1, box2, etc.)
         databaseReference.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                // Retrieve BoxData object from Firebase
                 BoxData boxData = dataSnapshot.getValue(BoxData.class);
 
                 if (boxData != null) {
-                    // Update the TextView with the data from Firebase
                     String displayText = "Data: " + boxData.getData() + "\nOption: " + boxData.getSelectedOption();
                     boxTextView.setText(displayText);
                 } else {
-                    // Set default value if data is null (e.g., first time or empty)
-                    boxTextView.setText("No data available");
+                    boxTextView.setText("😔 No Data Available");
                 }
             }
 

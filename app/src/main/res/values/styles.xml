@@ -7,7 +7,19 @@
     <style name="Widget.TimeTracker.AppWidget.InnerView" parent="android:Widget">
         <item name="android:background">?android:attr/colorBackground</item>
         <item name="android:textColor">?android:attr/textColorPrimary</item>
-    </style>
 
+    </style>
+    <color name="colorPrimary">#6DA3E0</color>
+    <style name="BoxStyle" parent="TextAppearance.AppCompat">
+        <item name="android:layout_width">match_parent</item> <!-- Adjusted for equal distribution in grid layout -->
+        <item name="android:layout_height">wrap_content</item> <!-- Changed to wrap_content for content adjustment -->
+        <item name="android:layout_weight">1</item> <!-- Maintained for equal width distribution in GridLayout -->
+        <item name="android:layout_margin">8dp</item>
+        <item name="android:background">@drawable/rounded_background</item> <!-- Custom drawable with rounded corners -->
+        <item name="android:gravity">center</item>
+        <item name="android:textColor">@android:color/white</item>
+        <item name="android:textSize">14sp</item> <!-- Adjusted size for better fit -->
+        <item name="android:padding">16dp</item> <!-- Increased padding for better spacing -->
+    </style>
 
 </resources>
