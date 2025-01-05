@@ -8,5 +8,8 @@
         <item>Option 2</item>
         <item>Option 3</item>
     </string-array>
+    <string name="channel_name">Timer Service Channel</string>
+    <string name="channel_description">Notifications from the Timer Service</string>
+
 </resources>
 

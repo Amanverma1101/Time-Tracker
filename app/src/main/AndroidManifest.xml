@@ -2,6 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.timetracker">
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+
+
 
     <application
         android:allowBackup="true"
@@ -22,6 +25,8 @@
                 <action android:name="com.example.timetracker.UPDATE_BOX" />
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
                 <action android:name="com.example.timetracker.START_TIMER_ACTION" />
+                <action android:name="com.example.timetracker.ACTION_APPLY_BORDER" />
+                <action android:name="com.example.timetracker.ACTION_OPEN_POPUP" />
             </intent-filter>
             <meta-data
                 android:name="android.appwidget.provider"
@@ -37,14 +42,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".SettingsActivity"
+            android:label="Settings"
+            android:launchMode="standard">
+        </activity>
 
 
 
-        <!-- PopupActivity -->
+
+    <!-- PopupActivity -->
         <activity
             android:name=".PopupActivity"
             android:theme="@style/Theme.AppCompat.Dialog"
-            android:launchMode="singleTask"
+            android:launchMode="standard"
             android:taskAffinity=""
             android:exported="true"
             android:excludeFromRecents="true" >
@@ -56,7 +67,9 @@
         </activity>
 
         <activity android:name=".ReportActivity" />
-
+        <service
+            android:name=".TimerService"
+            android:exported="false" />
 
 
     </application>

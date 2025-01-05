@@ -19,11 +19,15 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
 
 public class PopupActivity extends AppCompatActivity {
     private FirebaseDatabase mDatabase;
+    private FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
+    private static final String TAG = "PopupActivity";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -34,12 +38,19 @@ public class PopupActivity extends AppCompatActivity {
         // Get the box position passed to the popup
         int boxPosition = getIntent().getIntExtra("BOX_POSITION", -1);
         Log.d("PopupActivityDebug", "BOX_POSITION: " + boxPosition);
-        // Initialize NumberPicker
-        NumberPicker numberPicker = findViewById(R.id.number_picker);
-        numberPicker.setMinValue(1);
-        numberPicker.setMaxValue(100); // Set a range of values (1 to 100)
-        numberPicker.setWrapSelectorWheel(true);
+        // Example string array
+        String[] values = new String[] {"YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"};
+        FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
+        String userId = "user1";
+        DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
 
+        // Get the NumberPicker reference
+        NumberPicker numberPicker = findViewById(R.id.number_picker);
+//        numberPicker.setMinValue(0);
+//        numberPicker.setMaxValue(values.length - 1);
+//        numberPicker.setDisplayedValues(values);
+//        numberPicker.setWrapSelectorWheel(true);
+        setupNumberPicker(numberPicker, labelsRef);
         // Initialize EditText
         EditText inputField = findViewById(R.id.input_field);
 
@@ -61,7 +72,8 @@ public class PopupActivity extends AppCompatActivity {
                 Intent updateIntent = new Intent("com.example.timetracker.UPDATE_BOX");
                 updateIntent.setComponent(new ComponentName(getApplicationContext(), TimeTrackerWidget.class));
                 updateIntent.putExtra("BOX_POSITION", boxPosition);
-                updateIntent.putExtra("INPUT_VALUE", inputValue + " (" + selectedNumber + ")");
+                updateIntent.putExtra("INPUT_OPTION", selectedNumber );
+                updateIntent.putExtra("INPUT_VALUE", inputValue);
                 getApplicationContext().sendBroadcast(updateIntent);
                 saveDataToFirebase(inputValue, selectedOption, boxPosition, timestamp);
                 finish();
@@ -70,6 +82,74 @@ public class PopupActivity extends AppCompatActivity {
 
     }
 
+    private void setupNumberPicker(NumberPicker numberPicker, DatabaseReference labelsRef) {
+        ArrayList<String> valuesList = new ArrayList<>(Arrays.asList("YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"));
+
+        labelsRef.addValueEventListener(new ValueEventListener() {
+            @Override
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                    String label = snapshot.getValue(String.class);
+                    if (!valuesList.contains(label)) {
+                        valuesList.add(label);
+                    }
+                }
+                String[] values = valuesList.toArray(new String[0]);
+                numberPicker.setMinValue(0);
+                numberPicker.setMaxValue(values.length - 1);
+                numberPicker.setDisplayedValues(null);  // Clear old values
+                numberPicker.setDisplayedValues(values);
+                numberPicker.setWrapSelectorWheel(true);
+            }
+
+            @Override
+            public void onCancelled(DatabaseError databaseError) {
+                Log.w("PopupActivityDebug", "loadLabels:onCancelled", databaseError.toException());
+            }
+        });
+    }
+
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        Log.d(TAG, "onStart called");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        Log.d(TAG, "onResume called");
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        Log.d(TAG, "onPause called");
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        Log.d(TAG, "onStop called");
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.d(TAG, "onDestroy called");
+        int boxPosition = getIntent().getIntExtra("BOX_POSITION", -1);
+        if (boxPosition != -1) {
+//            TimeTrackerWidget.timerRunning[boxPosition - 1] = false;
+            Log.d("PopupActivity", "Reset timerRunning for Box: " + boxPosition);
+        }
+    }
+
+    @Override
+    protected void onRestart() {
+        super.onRestart();
+        Log.d(TAG, "onRestart called");
+    }
 
     private void sendInputToWidget(String inputText) {
         // Prepare an Intent with the action to update the widget

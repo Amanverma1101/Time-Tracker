@@ -2,11 +2,15 @@ package com.example.timetracker;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
+import androidx.appcompat.widget.Toolbar;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -14,9 +18,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -69,6 +75,30 @@ public class MainActivity extends AppCompatActivity {
             Intent intent = new Intent(MainActivity.this, ReportActivity.class);
             startActivity(intent);
         });
+
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        Objects.requireNonNull(getSupportActionBar()).setDisplayHomeAsUpEnabled(false);
+        getSupportActionBar().setHomeAsUpIndicator(R.drawable.ic_menu);
+        getSupportActionBar().setDisplayShowTitleEnabled(false);
+
+        // Navigation icon click listener
+        toolbar.setNavigationOnClickListener(view -> {
+            PopupMenu popup = new PopupMenu(MainActivity.this, view);
+            popup.getMenuInflater().inflate(R.menu.menu_main, popup.getMenu());
+            popup.setOnMenuItemClickListener(item -> {
+                // Handle item clicks here
+                return false;
+//                switch (item.getItemId()) {
+//                    case R.id.action_settings:
+//                        // Action for "Settings" menu item
+//                        return true;
+//                    default:
+//                        return false;
+//                }
+            });
+            popup.show();
+        });
     }
 
     // Method to fetch data from Firebase and update the UI
@@ -100,4 +130,24 @@ public class MainActivity extends AppCompatActivity {
             }
         });
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_settings) {
+            // Start the SettingsActivity when the "Settings" item is clicked
+            Intent settingsIntent = new Intent(this, SettingsActivity.class);
+            startActivity(settingsIntent);
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
 }
