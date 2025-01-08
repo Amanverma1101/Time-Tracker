@@ -2,8 +2,22 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
+        android:id="@+id/sign_in_button"
+        android:title="Sign In"
+        android:icon="@drawable/ic_menu"
+        android:orderInCategory="100"
+        app:showAsAction="never"
+        tools:ignore="HardcodedText" />
+    <item
         android:id="@+id/action_settings"
         android:title="Settings"
+        android:icon="@drawable/ic_menu"
+        android:orderInCategory="100"
+        app:showAsAction="never"
+        tools:ignore="HardcodedText" />
+    <item
+        android:id="@+id/download_data"
+        android:title="Download Data"
         android:icon="@drawable/ic_menu"
         android:orderInCategory="100"
         app:showAsAction="never"

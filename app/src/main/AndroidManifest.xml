@@ -5,7 +5,6 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
 
 
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -67,6 +66,7 @@
         </activity>
 
         <activity android:name=".ReportActivity" />
+        <activity android:name=".LabelReportsActivity" />
         <service
             android:name=".TimerService"
             android:exported="false" />

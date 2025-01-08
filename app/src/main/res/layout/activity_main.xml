@@ -94,6 +94,15 @@
     </ScrollView>
 
     <Button
+        android:id="@+id/show_label_report"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:background="@color/colorPrimary"
+        android:text="Label wise reports"
+        android:textColor="@android:color/white" />
+    <Button
         android:id="@+id/btn_show_reports"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -102,5 +111,4 @@
         android:background="@color/colorPrimary"
         android:text="View Reports"
         android:textColor="@android:color/white" />
-
 </LinearLayout>
