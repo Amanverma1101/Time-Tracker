@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+
+
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -17,72 +19,217 @@
         android:textStyle="bold"
         android:layout_marginBottom="16dp"/>
 
-    <LinearLayout
+
+
+    <GridLayout
         android:id="@+id/label_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:columnCount="3"
+        android:orientation="horizontal"
         android:layout_below="@id/tv_add_label">
 
-        <!-- Fixed TextViews can be defined here -->
-        <TextView
-            android:id="@+id/label_1"
-            style="@style/BoxStyle"
-            android:text="YouTube" />
+        <FrameLayout
+            android:layout_width="128dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="8dp">
 
-        <TextView
-            android:id="@+id/label_2"
-            style="@style/BoxStyle"
-            android:text="Instagram" />
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/circular_background"
+                android:scaleType="fitCenter"
+                android:src="@drawable/yt" />
 
-        <TextView
-            android:id="@+id/label_3"
-            style="@style/BoxStyle"
-            android:text="Meditation" />
+            <TextView
+                android:id="@+id/label_1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginTop="80dp"
+                android:gravity="center"
+                android:text="YouTube"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+        </FrameLayout>
 
-        <TextView
-            android:id="@+id/label_4"
-            style="@style/BoxStyle"
-            android:text="Food" />
+        <FrameLayout
+            android:layout_width="124dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="8dp">
 
-        <TextView
-            android:id="@+id/label_5"
-            style="@style/BoxStyle"
-            android:text="Gym" />
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/circular_background"
+                android:scaleType="fitCenter"
+                android:src="@drawable/insta" />
 
-        <TextView
-            android:id="@+id/label_6"
-            style="@style/BoxStyle"
-            android:text="Reading" />
+            <TextView
+                android:id="@+id/label_2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginTop="80dp"
+                android:gravity="center"
+                android:text="Instagram"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+        </FrameLayout>
 
-        <TextView
-            android:id="@+id/label_7"
-            style="@style/BoxStyle"
-            android:text="Running" />
+        <FrameLayout
+            android:layout_width="126dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="8dp">
 
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/circular_background"
+                android:scaleType="fitCenter"
+                android:src="@drawable/med" />
 
-        <!-- More TextViews can be added here in similar fashion -->
-    </LinearLayout>
+            <TextView
+                android:id="@+id/label_3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginTop="80dp"
+                android:gravity="center"
+                android:text="Meditation"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="126dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="8dp">
 
-    <LinearLayout
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/circular_background"
+                android:scaleType="fitCenter"
+                android:src="@drawable/food" />
+
+            <TextView
+                android:id="@+id/label_4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginTop="80dp"
+                android:gravity="center"
+                android:text="Food"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="126dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/circular_background"
+                android:scaleType="fitCenter"
+                android:src="@drawable/gym" />
+
+            <TextView
+                android:id="@+id/label_5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginTop="80dp"
+                android:gravity="center"
+                android:text="Gym"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+        </FrameLayout>
+        <FrameLayout
+            android:layout_width="126dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/circular_background"
+                android:scaleType="fitCenter"
+                android:src="@drawable/read" />
+
+            <TextView
+                android:id="@+id/label_6"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginTop="80dp"
+                android:gravity="center"
+                android:text="Reading"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+        </FrameLayout>
+
+        <FrameLayout
+            android:layout_width="126dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:padding="8dp">
+
+            <ImageView
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_gravity="center_horizontal"
+                android:background="@drawable/circular_background"
+                android:scaleType="fitCenter"
+                android:src="@drawable/run" />
+
+            <TextView
+                android:id="@+id/label_7"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal|bottom"
+                android:layout_marginTop="80dp"
+                android:gravity="center"
+                android:text="Running"
+                android:textAppearance="?android:attr/textAppearanceMedium" />
+        </FrameLayout>
+        <!-- Repeat this FrameLayout block for Instagram, Meditation, etc., modifying the ids and src as necessary -->
+        <!-- Make sure to create circular_background.xml in drawable for circular images -->
+
+    </GridLayout>
+    <ScrollView
+        android:id="@+id/sc_view"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/label_container"
+        android:layout_above="@+id/btn_add_new">
+
+        <GridLayout
         android:id="@+id/label_container_1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:columnCount="3"
+        android:rowCount="3"
+        android:orientation="horizontal"
         android:layout_below="@id/label_container">
-
-
-
-    </LinearLayout>
-
+    </GridLayout>
+    </ScrollView>
     <Button
         android:id="@+id/btn_add_new"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/label_container_1"
+        android:layout_alignParentBottom="true"
         android:text="Add New"
-        android:layout_marginTop="16dp"
         android:background="@color/colorPrimary"
-        android:textColor="@android:color/white" />
+        android:textColor="@android:color/white"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"/>
 
 </RelativeLayout>

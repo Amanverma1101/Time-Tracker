@@ -44,7 +44,8 @@
         <activity
             android:name=".SettingsActivity"
             android:label="Settings"
-            android:launchMode="standard">
+            android:launchMode="standard"
+            android:windowSoftInputMode="adjustResize">
         </activity>
 
 

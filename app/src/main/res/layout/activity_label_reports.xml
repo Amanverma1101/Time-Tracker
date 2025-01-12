@@ -1,48 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="16dp"
-    android:background="@drawable/gradient_background">
+    android:fillViewport="true">
 
-    <TextView
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Label wise Reports"
-        android:gravity="center"
-        android:textSize="24sp"
-        android:textColor="@android:color/white"
-    android:textStyle="bold"/>
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:background="@drawable/gradient_background">
 
-    <Spinner
-        android:id="@+id/label_spinner"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"/>
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Label wise Reports"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:textColor="@android:color/white"
+            android:textStyle="bold"/>
 
-    <ImageView
-        android:id="@+id/label_image"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center_horizontal"
-        android:layout_marginTop="20dp"/>
+        <Spinner
+            android:id="@+id/label_spinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@color/light_blue_50"
+            android:textAlignment="center"
+            android:layout_marginLeft="40dp"
+            android:layout_marginRight="40dp"
+            android:layout_marginTop="20dp"/>
 
-    <TextView
-        android:id="@+id/date_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="18sp"
-        android:textColor="@android:color/white"
-        android:gravity="center"
-        android:layout_marginTop="16dp"/>
+        <ImageView
+            android:id="@+id/label_image"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:maxWidth="50dp"
+            android:maxHeight="50dp"
+            android:layout_marginTop="20dp"/>
 
-    <TextView
-        android:id="@+id/data_text"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textSize="16sp"
-        android:textColor="@android:color/white"
-        android:gravity="center"/>
+        <!-- Dynamic Data Section -->
+        <LinearLayout
+            android:id="@+id/full_data_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="16dp"
+            android:paddingTop="9dp">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:background="@android:drawable/dialog_holo_light_frame"
+                android:padding="8dp">
 
-</LinearLayout>
+                <!-- Date Header -->
+                <TextView
+                    android:id="@+id/dateTextView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="#CCCCCC"
+                    android:text="11-10-2024"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Large"
+                    android:gravity="center"
+                    android:padding="8dp"/>
+
+                <!-- Time and Data Entries -->
+                <LinearLayout
+                    android:id="@+id/data_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="8dp">
+
+                    <!-- Time-Data Pair 1 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:background="#FFFFFF"
+                        android:padding="8dp">
+
+                        <TextView
+                            android:id="@+id/time1TextView"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="11:10 - 11:20"
+                            android:textAppearance="@style/TextAppearance.AppCompat.Medium"/>
+
+                        <TextView
+                            android:id="@+id/data1TextView"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="2"
+                            android:text="This is the data"
+                            android:textAppearance="@style/TextAppearance.AppCompat.Medium"/>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

@@ -1,21 +1,31 @@
 package com.example.timetracker;
 
+import android.content.DialogInterface;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
+import android.widget.GridLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.res.ResourcesCompat;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
@@ -25,18 +35,20 @@ import com.google.firebase.database.ValueEventListener;
 
 public class SettingsActivity extends AppCompatActivity {
 
-    private LinearLayout labelContainer;
+    private GridLayout labelContainer;
     private Button btnAddNew;
+    private EditText newLabelInput;
     private FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
     private boolean isAddingNew = false; // Flag to check if adding a new label
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.action_settings); // Ensure this is the correct layout reference
+        setContentView(R.layout.action_settings);
 
         labelContainer = findViewById(R.id.label_container_1);
         btnAddNew = findViewById(R.id.btn_add_new);
+        newLabelInput = new EditText(this); // Initialize it here or in addNewLabelInput()
 
         loadLabelsFromRealtimeDB();
 
@@ -45,13 +57,18 @@ public class SettingsActivity extends AppCompatActivity {
             public void onClick(View view) {
                 if (!isAddingNew) {
                     btnAddNew.setText("Save");
-                    addNewLabelInput(); // Method to add new EditText
-                    isAddingNew = true;
+                    addNewLabelInput();  // This now opens a dialog for input
+                    isAddingNew = true;  // You may still track this if it affects other parts of your UI logic
                 } else {
-                    saveNewLabel();
+                    // This might be redundant now if all saving is handled via the dialog
+                    btnAddNew.setText("Add New");
+                    isAddingNew = false;
                 }
             }
         });
+
+
+
     }
 
     private void loadLabelsFromRealtimeDB() {
@@ -61,18 +78,16 @@ public class SettingsActivity extends AppCompatActivity {
         labelsRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                labelContainer.removeAllViews();
+                labelContainer.removeAllViews(); // Clears all existing views to prevent duplication
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     String label = snapshot.getValue(String.class);
-                    TextView textView = createLabelTextView(label);
+                    FrameLayout labelView = createLabelView(label, R.drawable.def); // Correctly name it to reflect it's a FrameLayout
                     String key = snapshot.getKey();
-                    textView.setPadding(16, 16, 16, 16);
-                    textView.setTextColor(Color.WHITE);
-                    textView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
-                    labelContainer.addView(textView);
 
-                    textView.setOnLongClickListener(v -> {
-                        showPopup(v, label,key);
+                    labelContainer.addView(labelView);
+
+                    labelView.setOnLongClickListener(v -> {
+                        showPopup(v, label, key);
                         return true;
                     });
                 }
@@ -84,6 +99,7 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
     }
+
 
     private void showPopup(View view, String label, String key) {
         PopupMenu popup = new PopupMenu(SettingsActivity.this, view);
@@ -160,34 +176,93 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
 
-    private TextView createLabelTextView(String label) {
-        TextView labelView = new TextView(this, null, 0, R.style.BoxStyle);
-        labelView.setText(label);
-        adjustViewMargins(labelView);
-        return labelView;
-    }
-    private void addNewLabelInput() {
-        EditText newLabel = new EditText(this);
-        newLabel.setHint("Enter new label");
-        adjustViewMargins(newLabel);
-        labelContainer.addView(newLabel);
-        newLabel.requestFocus();  // Focus on the new label input
-    }
-    private void saveNewLabel() {
-        EditText newLabelInput = (EditText) labelContainer.getChildAt(labelContainer.getChildCount() - 1);
-        if (newLabelInput instanceof EditText && !newLabelInput.getText().toString().isEmpty()) {
-            String newLabel = newLabelInput.getText().toString();
+    private FrameLayout createLabelView(String label, int drawableId) {
+        FrameLayout frameLayout = new FrameLayout(this);
+        GridLayout.LayoutParams frameParams = new GridLayout.LayoutParams();
+        frameParams.width = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 126, getResources().getDisplayMetrics());
+        frameParams.height = GridLayout.LayoutParams.WRAP_CONTENT;
+        frameParams.setMargins(0, 12, 0, 8);  // Set consistent margins
+        frameLayout.setLayoutParams(frameParams);
 
-            convertEditTextToTextView(newLabelInput);
+
+        ImageView imageView = new ImageView(this);
+        imageView.setLayoutParams(new FrameLayout.LayoutParams(70, 70, Gravity.CENTER_HORIZONTAL));
+        imageView.setImageDrawable(ContextCompat.getDrawable(this, drawableId)); // Set the actual image
+        FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(126, 126, Gravity.CENTER_HORIZONTAL); // Adjust 70dp to match your XML or required size
+        imageView.setLayoutParams(imageParams);
+        imageView.setBackground(ContextCompat.getDrawable(this, R.drawable.circular_background)); // Ensure this line is correct
+        imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+
+
+        TextView textView = new TextView(this);
+        FrameLayout.LayoutParams textParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
+        textParams.topMargin = 140;
+        textView.setLayoutParams(textParams);
+        textView.setText(label);
+        textView.setGravity(Gravity.CENTER);
+        textView.setTextAppearance(android.R.style.TextAppearance_Medium);
+
+        frameLayout.addView(imageView);
+        frameLayout.addView(textView);
+
+        return frameLayout;
+    }
+
+
+    private void addNewLabelInput() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Enter New Label");
+
+        // Set up the input
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        input.setHint("Label name");
+
+        // Specify the type of input expected
+        builder.setView(input);
+
+        // Set up the buttons
+        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String label = input.getText().toString().trim();
+                if (!label.isEmpty()) {
+                    saveNewLabel(label);
+                } else {
+                    Toast.makeText(SettingsActivity.this, "Label can't be empty", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                dialog.cancel();
+            }
+        });
+
+        builder.show();
+        input.requestFocus();
+    }
+
+
+
+
+
+
+
+
+    private void saveNewLabel(String label) {
+        if (!label.isEmpty()) {
+            FrameLayout newLabelView = createLabelView(label,R.drawable.def);
+            labelContainer.addView(newLabelView);
             btnAddNew.setText("Add New");
             isAddingNew = false;
 
             String userId = "user1";
             DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
+            String labelKey = labelsRef.push().getKey(); // Generate a unique key
 
-            String labelKey = labelsRef.push().getKey();  // Generate a unique key
-            assert labelKey != null;
-            labelsRef.child(labelKey).setValue(newLabel)
+            labelsRef.child(labelKey).setValue(label)
                     .addOnCompleteListener(task -> {
                         if (task.isSuccessful()) {
                             Toast.makeText(getApplicationContext(), "Label saved successfully", Toast.LENGTH_SHORT).show();
@@ -200,18 +275,6 @@ public class SettingsActivity extends AppCompatActivity {
         }
     }
 
-    private void convertEditTextToTextView(EditText editText) {
-        TextView labelView = createLabelTextView(editText.getText().toString());
-        labelContainer.removeView(editText);
-        labelContainer.addView(labelView);
-    }
-
-    private void adjustViewMargins(View view) {
-        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        params.setMargins(8, 8, 8, 16);  // Applying margins to ensure spacing between elements
-        view.setLayoutParams(params);
-    }
     @Override
     protected void onResume() {
         super.onResume();

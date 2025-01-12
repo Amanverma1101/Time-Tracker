@@ -134,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
             startActivity(intent);
         });
         btnShowLabelReports.setOnClickListener(v -> {
-            Intent intent = new Intent(MainActivity.this, ReportActivity.class);
+            Intent intent = new Intent(MainActivity.this, LabelReportsActivity.class);
             startActivity(intent);
         });
 
