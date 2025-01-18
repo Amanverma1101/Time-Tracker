@@ -1,18 +1,19 @@
-// Apply the Android plugin for your project
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+        maven("https://jitpack.io")
+    }
+    dependencies {
+        classpath("com.google.gms:google-services:4.3.15")  // Check for the latest version if necessary
+        // Add other classpaths like Kotlin if needed
+    }
+}
+
+
 plugins {
     alias(libs.plugins.android.application) apply false
     // You can add other plugins here if needed, like Kotlin
 }
 
-buildscript {
-    repositories {
-        google()  // Make sure to add Google Maven repository
-        mavenCentral()
-    }
-    dependencies {
-        // Add the Google services plugin classpath
-        classpath("com.google.gms:google-services:4.3.15")  // Firebase services
-    }
-}
-
-// Additional configurations can go here
+// Here you can add configurations that apply to all subprojects, if any

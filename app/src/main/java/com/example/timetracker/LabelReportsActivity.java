@@ -22,6 +22,7 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 public class LabelReportsActivity extends AppCompatActivity {
     private Spinner labelSpinner;
@@ -85,11 +87,16 @@ public class LabelReportsActivity extends AppCompatActivity {
                 labels.addAll(Arrays.asList("YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"));
                 Log.d("LabelReportsActivity", "Snapshot: " + dataSnapshot.toString());  // Log the entire snapshot
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    String label = snapshot.getValue(String.class);
-                    if (label != null) {
-                        labels.add(label);
-                    } else {
-                        Log.d("LabelReportsActivity", "Label is null for snapshot: " + snapshot.getKey());
+                    GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {};
+                    Map<String, String> labelData = snapshot.getValue(t);
+                    // Retrieve the text part of the label
+                    if (labelData != null) {
+                        String label = labelData.get("text");
+                        if (label != null) {
+                            labels.add(label);
+                        } else {
+                            Log.d("LabelReportsActivity", "Label is null for snapshot: " + snapshot.getKey());
+                        }
                     }
                 }
                 adapter.notifyDataSetChanged(); // Refresh spinner with new data

@@ -37,11 +37,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView1"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_1"
@@ -64,11 +66,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView2"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_2"
@@ -91,11 +95,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView3"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_3"
@@ -118,11 +124,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView4"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_4"
@@ -145,11 +153,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView5"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_5"
@@ -182,11 +192,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView6"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_6"
@@ -209,11 +221,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView7"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_7"
@@ -236,11 +250,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView8"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_8"
@@ -263,11 +279,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView9"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_9"
@@ -290,11 +308,13 @@
             android:background="?android:attr/selectableItemBackground"
             android:padding="4dp">
 
-            <ImageView
+            <TextView
                 android:id="@+id/imageView10"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
-                android:src="@drawable/def" />
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
 
             <TextView
                 android:id="@+id/box_text_10"
@@ -309,7 +329,41 @@
         <!-- Repeat for Cell 7, Cell 8, Cell 9, and Cell 10 -->
 
         </LinearLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
 
+        <!-- Cell 1 -->
+        <LinearLayout
+            android:id="@+id/box_11"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="?android:attr/selectableItemBackground"
+            android:padding="4dp">
+
+            <TextView
+                android:id="@+id/imageView11"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:gravity="center"
+                android:textSize="30sp"
+                android:text="🎇"/>
+
+            <TextView
+                android:id="@+id/box_text_11"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="Slot 1`"
+                android:textColor="#000080"
+                android:textSize="12sp" />
+        </LinearLayout>
+
+    </LinearLayout>
 
 
 

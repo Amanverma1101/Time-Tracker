@@ -71,6 +71,11 @@ dependencies {
     implementation("com.google.api-client:google-api-client-jackson2:1.31.5")
     implementation("com.google.api-client:google-api-client-gson:1.31.5") // Use Gson for JSON parsing
     implementation("com.google.code.gson:gson:2.8.6")
+    implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
+    implementation("com.ibm.icu:icu4j:70.1")
+
+
+
 
 //    implementation("androidx.activity:activity:1.2.0")
 //    implementation("androidx.fragment:fragment:1.3.0")

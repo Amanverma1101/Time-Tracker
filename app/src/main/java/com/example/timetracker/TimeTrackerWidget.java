@@ -18,6 +18,12 @@ import android.util.Log;
 import android.widget.RemoteViews;
 import android.widget.Toast;
 
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
+
 public class TimeTrackerWidget extends AppWidgetProvider {
 
     public static final String ACTION_UPDATE_TEXTVIEW = "com.example.timetracker.UPDATE_TEXTVIEW";
@@ -91,27 +97,38 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         }
         else if ("com.example.timetracker.UPDATE_BOX".equals(action)) {
             int boxPosition = intent.getIntExtra("BOX_POSITION", -1);
-            int inputOption = intent.getIntExtra("INPUT_OPTION", 0); // Default to 0 if not found
+            int inputOption = intent.getIntExtra("INPUT_OPTION", -1); // Default to 0 if not found
             String inputValue = intent.getStringExtra("INPUT_VALUE");
+            String option = String.valueOf((inputOption - 7));
 
             if (boxPosition != -1 && inputOption != -1) {
                 AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
                 RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.time_tracker_widget);
-
-                // Update the box text with the input value
                 int textViewId = getBoxTextViewId(boxPosition);
-                int imageViewId = getBoxImageViewId(boxPosition);
-                if (textViewId != -1 && imageViewId != -1) {
-                    views.setTextViewText(textViewId, inputValue);
-                    Log.d( "popup_input","inputOption : "+inputOption);
-                    int imageResId = getImageResourceId(inputOption);
-                    Log.d( "popup_input","imageResId : "+imageResId);
-                    Log.d( "popup_input","imageViewId : "+imageViewId);
-                    views.setImageViewResource(imageViewId, imageResId);
-                }
+                int emojiTextViewId = getBoxImageViewId(boxPosition);  // Since you're using TextView to show emojis now
 
-                ComponentName widget = new ComponentName(context, TimeTrackerWidget.class);
-                appWidgetManager.updateAppWidget(widget, views);
+                // Fetch the emoji from Firebase
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("user_data").child("user1").child("labels").child(option);
+                ref.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        String emoji = dataSnapshot.child("emoji").getValue(String.class);
+                        if (emoji == null) emoji = "🤨"; // Default emoji if none found
+
+                        if (textViewId != -1 && emojiTextViewId != -1) {
+                            views.setTextViewText(textViewId, inputValue); // Set input value to the TextView
+                            views.setTextViewText(emojiTextViewId, emoji); // Set emoji to the emoji TextView
+
+                            ComponentName widget = new ComponentName(context, TimeTrackerWidget.class);
+                            appWidgetManager.updateAppWidget(widget, views);
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+                        Log.e("FirebaseError", "Failed to fetch emoji: " + databaseError.getMessage());
+                    }
+                });
             }
         }
 

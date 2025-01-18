@@ -12,6 +12,7 @@ import android.widget.NumberPicker;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
 
 import com.google.firebase.database.DatabaseError;
@@ -23,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Locale;
+import java.util.Map;
 
 public class PopupActivity extends AppCompatActivity {
     private FirebaseDatabase mDatabase;
@@ -46,10 +48,6 @@ public class PopupActivity extends AppCompatActivity {
 
         // Get the NumberPicker reference
         NumberPicker numberPicker = findViewById(R.id.number_picker);
-//        numberPicker.setMinValue(0);
-//        numberPicker.setMaxValue(values.length - 1);
-//        numberPicker.setDisplayedValues(values);
-//        numberPicker.setWrapSelectorWheel(true);
         setupNumberPicker(numberPicker, labelsRef);
         // Initialize EditText
         EditText inputField = findViewById(R.id.input_field);
@@ -89,9 +87,17 @@ public class PopupActivity extends AppCompatActivity {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    String label = snapshot.getValue(String.class);
-                    if (!valuesList.contains(label)) {
-                        valuesList.add(label);
+                    GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {
+                    };
+                    Map<String, String> labelData = snapshot.getValue(t);
+                    // Retrieve the text part of the label
+                    if (labelData != null) {
+                        String label = labelData.get("text");
+                        if (label != null) {
+                            if (!valuesList.contains(label)) {
+                                valuesList.add(label);
+                            }
+                        }
                     }
                 }
                 String[] values = valuesList.toArray(new String[0]);

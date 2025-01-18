@@ -25,13 +25,17 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
-import androidx.core.content.res.ResourcesCompat;
+import com.ibm.icu.text.BreakIterator;
 
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class SettingsActivity extends AppCompatActivity {
 
@@ -66,9 +70,16 @@ public class SettingsActivity extends AppCompatActivity {
                 }
             }
         });
+    }
 
-
-
+    private boolean isValidEmojiInput(String input) {
+        BreakIterator iterator = BreakIterator.getCharacterInstance();
+        iterator.setText(input);
+        int count = 0;
+        while (iterator.next() != BreakIterator.DONE) {
+            count++;
+        }
+        return count == 1; // Only valid if exactly one grapheme cluster
     }
 
     private void loadLabelsFromRealtimeDB() {
@@ -80,16 +91,24 @@ public class SettingsActivity extends AppCompatActivity {
             public void onDataChange(DataSnapshot dataSnapshot) {
                 labelContainer.removeAllViews(); // Clears all existing views to prevent duplication
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    String label = snapshot.getValue(String.class);
-                    FrameLayout labelView = createLabelView(label, R.drawable.def); // Correctly name it to reflect it's a FrameLayout
-                    String key = snapshot.getKey();
+                    // Use GenericTypeIndicator to specify the expected type
+                    GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {};
+                    Map<String, String> labelData = snapshot.getValue(t);
+                    if (labelData != null) {
+                        String label = labelData.get("text");// Retrieve the text part of the label
+                        String emoji = labelData.get("emoji");
+                        if (label != null) {
+                            FrameLayout labelView = createLabelView(label, emoji, R.drawable.def); // Assuming createLabelView handles only text for now
+                            String key = snapshot.getKey();
 
-                    labelContainer.addView(labelView);
+                            labelContainer.addView(labelView);
 
-                    labelView.setOnLongClickListener(v -> {
-                        showPopup(v, label, key);
-                        return true;
-                    });
+                            labelView.setOnLongClickListener(v -> {
+                                showPopup(v, label, key);
+                                return true;
+                            });
+                        }
+                    }
                 }
             }
 
@@ -99,7 +118,6 @@ public class SettingsActivity extends AppCompatActivity {
             }
         });
     }
-
 
     private void showPopup(View view, String label, String key) {
         PopupMenu popup = new PopupMenu(SettingsActivity.this, view);
@@ -143,9 +161,6 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
-
-
-
     private void editLabel(String currentLabel, String key) {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Edit Label");
@@ -175,105 +190,148 @@ public class SettingsActivity extends AppCompatActivity {
         });
     }
 
+    private FrameLayout createLabelView(String text, String emoji, int drawableId) {
+        Log.d("label_testing", "createLabelView: " + text);
 
-    private FrameLayout createLabelView(String label, int drawableId) {
+        // Creating a new FrameLayout programmatically
         FrameLayout frameLayout = new FrameLayout(this);
         GridLayout.LayoutParams frameParams = new GridLayout.LayoutParams();
-        frameParams.width = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 126, getResources().getDisplayMetrics());
-        frameParams.height = GridLayout.LayoutParams.WRAP_CONTENT;
-        frameParams.setMargins(0, 12, 0, 8);  // Set consistent margins
+        frameParams.width = convertDpToPixels(128); // Width as per XML
+        frameParams.height = GridLayout.LayoutParams.WRAP_CONTENT; // Height set to wrap content
+        frameParams.setMargins(convertDpToPixels(0), convertDpToPixels(8), convertDpToPixels(0), convertDpToPixels(8));
         frameLayout.setLayoutParams(frameParams);
 
+        // Creating TextView programmatically for the emoji
+        TextView emojiView = new TextView(this);
+        FrameLayout.LayoutParams emojiParams = new FrameLayout.LayoutParams(
+                convertDpToPixels(70), convertDpToPixels(70), Gravity.CENTER_HORIZONTAL);
+        emojiView.setLayoutParams(emojiParams);
+        emojiView.setGravity(Gravity.CENTER);
+        emojiView.setText(emoji);
+        emojiView.setTextSize(TypedValue.COMPLEX_UNIT_SP, 32); // Set emoji size
+        emojiView.setBackground(ContextCompat.getDrawable(this, R.drawable.circular_background)); // Set circular background
+        frameLayout.addView(emojiView);
 
-        ImageView imageView = new ImageView(this);
-        imageView.setLayoutParams(new FrameLayout.LayoutParams(70, 70, Gravity.CENTER_HORIZONTAL));
-        imageView.setImageDrawable(ContextCompat.getDrawable(this, drawableId)); // Set the actual image
-        FrameLayout.LayoutParams imageParams = new FrameLayout.LayoutParams(126, 126, Gravity.CENTER_HORIZONTAL); // Adjust 70dp to match your XML or required size
-        imageView.setLayoutParams(imageParams);
-        imageView.setBackground(ContextCompat.getDrawable(this, R.drawable.circular_background)); // Ensure this line is correct
-        imageView.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-
-
+        // Creating TextView programmatically for the label
         TextView textView = new TextView(this);
-        FrameLayout.LayoutParams textParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
-        textParams.topMargin = 140;
+        FrameLayout.LayoutParams textParams = new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM);
+        textParams.topMargin = convertDpToPixels(80); // Top margin to position text below the emoji
         textView.setLayoutParams(textParams);
-        textView.setText(label);
+        textView.setText(text);
         textView.setGravity(Gravity.CENTER);
-        textView.setTextAppearance(android.R.style.TextAppearance_Medium);
-
-        frameLayout.addView(imageView);
+        textView.setTextAppearance(android.R.style.TextAppearance_Medium); // Styling text appearance
         frameLayout.addView(textView);
 
         return frameLayout;
     }
 
+    private int convertDpToPixels(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+    }
 
     private void addNewLabelInput() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Enter New Label");
+        builder.setTitle("Enter New Label and Emoji");
 
-        // Set up the input
-        final EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_TEXT);
-        input.setHint("Label name");
+        LinearLayout layout = new LinearLayout(this);
+        layout.setOrientation(LinearLayout.VERTICAL);
 
-        // Specify the type of input expected
-        builder.setView(input);
+        final EditText labelInput = new EditText(this);
+        labelInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        labelInput.setHint("Label name");
+        layout.addView(labelInput);
 
-        // Set up the buttons
-        builder.setPositiveButton("Save", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                String label = input.getText().toString().trim();
-                if (!label.isEmpty()) {
-                    saveNewLabel(label);
-                } else {
-                    Toast.makeText(SettingsActivity.this, "Label can't be empty", Toast.LENGTH_SHORT).show();
+        final EditText emojiInput = new EditText(this);
+        emojiInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        emojiInput.setHint("Emoji (single character)");
+        layout.addView(emojiInput);
+
+        builder.setView(layout);
+
+        builder.setPositiveButton("Save", (dialog, which) -> {
+            String label = labelInput.getText().toString().trim();
+            String emoji = emojiInput.getText().toString().trim();
+            if (!label.isEmpty()) {
+                if(isValidEmojiInput(emoji)) {
+                    saveNewLabel(label, emoji);
+                }else{
+                    Toast.makeText(SettingsActivity.this, "Try some different Emoji!", Toast.LENGTH_SHORT).show();
+                    // This line should not toggle `isAddingNew` but ensure UI consistency
+                    btnAddNew.setText("Add New");
+                    isAddingNew = false;
                 }
+            } else {
+                Toast.makeText(SettingsActivity.this, "Label and emoji can't be empty, emoji must be a single character", Toast.LENGTH_SHORT).show();
+                // This line should not toggle `isAddingNew` but ensure UI consistency
+                btnAddNew.setText("Add New");
+                isAddingNew = false;
             }
         });
-        builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialog, int which) {
-                dialog.cancel();
-            }
+
+        builder.setNegativeButton("Cancel", (dialog, which) -> {
+            btnAddNew.setText("Add New");
+            isAddingNew = false;
+        });
+
+        builder.setOnCancelListener(dialog -> {
+            btnAddNew.setText("Add New");
+            isAddingNew = false;
         });
 
         builder.show();
-        input.requestFocus();
+        labelInput.requestFocus();
     }
 
-
-
-
-
-
-
-
-    private void saveNewLabel(String label) {
-        if (!label.isEmpty()) {
-            FrameLayout newLabelView = createLabelView(label,R.drawable.def);
+    private void saveNewLabel(String label, String emoji) {
+        if (!label.isEmpty() && isValidEmojiInput(emoji)) {
+            FrameLayout newLabelView = createLabelView(label, emoji, R.drawable.def);
             labelContainer.addView(newLabelView);
             btnAddNew.setText("Add New");
             isAddingNew = false;
 
             String userId = "user1";
-            DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
-            String labelKey = labelsRef.push().getKey(); // Generate a unique key
+            DatabaseReference rootRef = firebaseDatabase.getReference("user_data").child(userId);
+            DatabaseReference labelsRef = rootRef.child("labels");
+            DatabaseReference counterRef = rootRef.child("labelCounter");
 
-            labelsRef.child(labelKey).setValue(label)
-                    .addOnCompleteListener(task -> {
-                        if (task.isSuccessful()) {
-                            Toast.makeText(getApplicationContext(), "Label saved successfully", Toast.LENGTH_SHORT).show();
-                        } else {
-                            Toast.makeText(getApplicationContext(), "Error saving label", Toast.LENGTH_SHORT).show();
-                        }
-                    });
+            // Read the current counter
+            counterRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    Integer count = dataSnapshot.getValue(Integer.class);
+                    if (count == null) count = 0;  // Default to 0 if not found
+
+                    // Use count as the label key
+                    Map<String, Object> labelData = new HashMap<>();
+                    labelData.put("text", label);
+                    labelData.put("emoji", emoji);
+
+                    Integer finalCount = count;
+                    labelsRef.child(String.valueOf(count)).setValue(labelData)
+                            .addOnCompleteListener(task -> {
+                                if (task.isSuccessful()) {
+                                    Toast.makeText(getApplicationContext(), "Label and emoji saved successfully", Toast.LENGTH_SHORT).show();
+                                    // Increment the counter after successful save
+                                    counterRef.setValue(finalCount + 1);
+                                } else {
+                                    Toast.makeText(getApplicationContext(), "Error saving label and emoji", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    Toast.makeText(getApplicationContext(), "Error accessing the database: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                }
+            });
         } else {
-            Toast.makeText(getApplicationContext(), "Label can't be empty", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "Label and emoji can't be empty, emoji must be a single character...", Toast.LENGTH_SHORT).show();
+            isAddingNew = false; // Reset the flag when cancel is clicked
         }
     }
+
+
 
     @Override
     protected void onResume() {

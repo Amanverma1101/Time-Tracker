@@ -6,12 +6,19 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.github.mikephil.charting.components.Description;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -32,6 +39,33 @@ public class ReportActivity extends AppCompatActivity {
 
         // Fetch and display the second chart with data from Firebase
         fetchAndDisplaySecondDonutChart();
+
+        BarChart chart = findViewById(R.id.barChart);
+
+        // Prepare entries for the bar chart
+        ArrayList<BarEntry> entries = new ArrayList<>();
+        entries.add(new BarEntry(1f, 10f));
+        entries.add(new BarEntry(2f, 20f));
+        entries.add(new BarEntry(3f, 30f));
+        entries.add(new BarEntry(4f, 40f));
+
+        // Create a dataset and give it a type (label for the dataset)
+        BarDataSet dataSet = new BarDataSet(entries, "Bar Data");
+        int color = getResources().getColor(R.color.purple_200, getTheme());
+        dataSet.setColor(color);  // Customize bar color
+
+        // Create BarData object that will hold the dataset
+        BarData data = new BarData(dataSet);
+        chart.setData(data);
+
+        // Configure the chart description
+        Description description = new Description();
+        description.setText("Your Chart Description");
+        chart.setDescription(description);
+
+        // Animate the Y axis
+        chart.animateY(500);
+
     }
 
     // Add the first donut chart with static data
