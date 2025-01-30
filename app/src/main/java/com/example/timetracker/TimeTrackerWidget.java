@@ -61,6 +61,7 @@ public class TimeTrackerWidget extends AppWidgetProvider {
 
             appWidgetManager.updateAppWidget(appWidgetId, views);
         }
+
     }
 
     @Override
@@ -97,27 +98,35 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         }
         else if ("com.example.timetracker.UPDATE_BOX".equals(action)) {
             int boxPosition = intent.getIntExtra("BOX_POSITION", -1);
-            int inputOption = intent.getIntExtra("INPUT_OPTION", -1); // Default to 0 if not found
             String inputValue = intent.getStringExtra("INPUT_VALUE");
-            String option = String.valueOf((inputOption - 7));
+            String inputOption = intent.getStringExtra("INPUT_OPTION"); // Ensure this gets the label text
 
-            if (boxPosition != -1 && inputOption != -1) {
+            if (boxPosition != -1 && inputOption != null) {
                 AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
                 RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.time_tracker_widget);
                 int textViewId = getBoxTextViewId(boxPosition);
-                int emojiTextViewId = getBoxImageViewId(boxPosition);  // Since you're using TextView to show emojis now
+                int emojiTextViewId = getBoxImageViewId(boxPosition);  // TextView for emoji
 
-                // Fetch the emoji from Firebase
-                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("user_data").child("user1").child("labels").child(option);
+                // Reference to labels in Firebase
+                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("user_data").child("user1").child("labels");
+
                 ref.addListenerForSingleValueEvent(new ValueEventListener() {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
-                        String emoji = dataSnapshot.child("emoji").getValue(String.class);
-                        if (emoji == null) emoji = "🤨"; // Default emoji if none found
+                        String foundEmoji = "🤨"; // Default emoji if not found
+
+                        // Iterate over all label entries
+                        for (DataSnapshot labelSnapshot : dataSnapshot.getChildren()) {
+                            String labelText = labelSnapshot.child("text").getValue(String.class);
+                            if (labelText != null && labelText.equalsIgnoreCase(inputOption)) {
+                                foundEmoji = labelSnapshot.child("emoji").getValue(String.class);
+                                break; // Stop once we find the match
+                            }
+                        }
 
                         if (textViewId != -1 && emojiTextViewId != -1) {
-                            views.setTextViewText(textViewId, inputValue); // Set input value to the TextView
-                            views.setTextViewText(emojiTextViewId, emoji); // Set emoji to the emoji TextView
+                            views.setTextViewText(textViewId, inputValue); // Set input value
+                            views.setTextViewText(emojiTextViewId, foundEmoji); // Set emoji
 
                             ComponentName widget = new ComponentName(context, TimeTrackerWidget.class);
                             appWidgetManager.updateAppWidget(widget, views);
@@ -131,6 +140,7 @@ public class TimeTrackerWidget extends AppWidgetProvider {
                 });
             }
         }
+
 
         else if ("com.example.timetracker.START_TIMER_ACTION".equals(intent.getAction())) {
             int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
@@ -275,27 +285,6 @@ public class TimeTrackerWidget extends AppWidgetProvider {
             context.startService(serviceIntent);
         }
     }
-    private int getImageResourceId(int inputValue) {
-        Log.d("img_tag", "getImageResourceId: "+inputValue);
-        switch (inputValue) {
-            case 0:
-                return R.drawable.yt;
-            case 1:
-                return R.drawable.insta;
-            case 2:
-                return R.drawable.med;
-            case 3:
-                return R.drawable.food;
-            case 4:
-                return R.drawable.gym;
-            case 5:
-                return R.drawable.read;
-            case 6:
-                return R.drawable.run;
-            default:
-                return R.drawable.def; // default image if no match is found
-        }
-    }
 
     private int getBoxImageViewId(int boxPosition) {
         int[] imageViewIds = {
@@ -304,8 +293,6 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         };
         return (boxPosition > 0 && boxPosition <= imageViewIds.length) ? imageViewIds[boxPosition - 1] : -1;
     }
-
-
     private int getBoxTextViewId(int boxPosition) {
         switch (boxPosition) {
             case 1: return R.id.box_text_1;

@@ -22,7 +22,29 @@ public class DonutChartView extends View {
     private float totalValue;
     private float animationProgress = 0f;
 
-    private int[] colors = {Color.RED, Color.BLUE, Color.GREEN, Color.MAGENTA, Color.CYAN};
+    private int[] colors = {
+            Color.parseColor("#F44336"), // Red
+            Color.parseColor("#E91E63"), // Pink
+            Color.parseColor("#9C27B0"), // Deep Purple
+            Color.parseColor("#673AB7"), // Indigo
+            Color.parseColor("#3F51B5"), // Blue
+            Color.parseColor("#2196F3"), // Light Blue
+            Color.parseColor("#03A9F4"), // Cyan
+            Color.parseColor("#00BCD4"), // Teal
+            Color.parseColor("#009688"), // Green
+            Color.parseColor("#4CAF50"), // Light Green
+            Color.parseColor("#8BC34A"), // Lime
+            Color.parseColor("#CDDC39"), // Yellow
+            Color.parseColor("#FFEB3B"), // Amber
+            Color.parseColor("#FFC107"), // Orange
+            Color.parseColor("#FF9800"), // Deep Orange
+            Color.parseColor("#FF5722"), // Brown
+            Color.parseColor("#795548"), // Grey
+            Color.parseColor("#9E9E9E"), // Blue Grey
+            Color.parseColor("#607D8B"), // Black
+            Color.parseColor("#000000")  // Deep Black for contrast
+    };
+
     private int innerCircleColor = Color.parseColor("#00B0FF");
 
     public DonutChartView(Context context) {

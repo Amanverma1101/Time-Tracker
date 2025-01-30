@@ -72,7 +72,8 @@ dependencies {
     implementation("com.google.api-client:google-api-client-gson:1.31.5") // Use Gson for JSON parsing
     implementation("com.google.code.gson:gson:2.8.6")
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-    implementation("com.ibm.icu:icu4j:70.1")
+    implementation("com.ibm.icu:icu4j:70.1")//for emoji check
+    implementation("com.google.android.material:material:1.4.0")
 
 
 

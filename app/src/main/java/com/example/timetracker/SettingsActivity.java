@@ -21,6 +21,7 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
@@ -68,6 +69,13 @@ public class SettingsActivity extends AppCompatActivity {
                     btnAddNew.setText("Add New");
                     isAddingNew = false;
                 }
+            }
+        });
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finish(); // Close the activity
+                overridePendingTransition(R.anim.fade_in, R.anim.slide_out_bottom);
             }
         });
     }
@@ -294,6 +302,7 @@ public class SettingsActivity extends AppCompatActivity {
             DatabaseReference rootRef = firebaseDatabase.getReference("user_data").child(userId);
             DatabaseReference labelsRef = rootRef.child("labels");
             DatabaseReference counterRef = rootRef.child("labelCounter");
+            
 
             // Read the current counter
             counterRef.addListenerForSingleValueEvent(new ValueEventListener() {

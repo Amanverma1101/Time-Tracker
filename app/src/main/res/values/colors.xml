@@ -8,5 +8,28 @@
     <color name="light_blue_900">#FF01579B</color>
     <color name="primary_color">#1565C0</color>
     <color name="purple_200">#FFBB86FC</color>
+    <!-- res/values/colors.xml -->
+    <array name="pie_chart_colors">
+        <item>#F44336</item> <!-- Red -->
+        <item>#E91E63</item> <!-- Pink -->
+        <item>#9C27B0</item> <!-- Deep Purple -->
+        <item>#673AB7</item> <!-- Indigo -->
+        <item>#3F51B5</item> <!-- Blue -->
+        <item>#2196F3</item> <!-- Light Blue -->
+        <item>#03A9F4</item> <!-- Cyan -->
+        <item>#00BCD4</item> <!-- Teal -->
+        <item>#009688</item> <!-- Green -->
+        <item>#4CAF50</item> <!-- Light Green -->
+        <item>#8BC34A</item> <!-- Lime -->
+        <item>#CDDC39</item> <!-- Yellow -->
+        <item>#FFEB3B</item> <!-- Amber -->
+        <item>#FFC107</item> <!-- Orange -->
+        <item>#FF9800</item> <!-- Deep Orange -->
+        <item>#FF5722</item> <!-- Brown -->
+        <item>#795548</item> <!-- Grey -->
+        <item>#9E9E9E</item> <!-- Blue Grey -->
+        <item>#607D8B</item> <!-- Black -->
+        <item>#000000</item> <!-- Deep Black for contrast -->
+    </array>
 
 </resources>

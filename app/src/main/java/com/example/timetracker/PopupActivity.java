@@ -29,6 +29,7 @@ import java.util.Map;
 public class PopupActivity extends AppCompatActivity {
     private FirebaseDatabase mDatabase;
     private FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
+    private ArrayList<String> valuesList = new ArrayList<>();
     private static final String TAG = "PopupActivity";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -41,7 +42,7 @@ public class PopupActivity extends AppCompatActivity {
         int boxPosition = getIntent().getIntExtra("BOX_POSITION", -1);
         Log.d("PopupActivityDebug", "BOX_POSITION: " + boxPosition);
         // Example string array
-        String[] values = new String[] {"YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"};
+//        String[] values = new String[] {"YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"};
         FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
         String userId = "user1";
         DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
@@ -61,6 +62,7 @@ public class PopupActivity extends AppCompatActivity {
             long timestamp = System.currentTimeMillis();
 //            Log.d("PopupActivityDebug", "selectedNumber: " + selectedNumber);
 //            Log.d("PopupActivityDebug", "inputValue: " + inputValue);
+            Log.d("PopupActivityDebug", "inputValue: " + selectedOption);
             if (inputValue.isEmpty()) {
                 Toast.makeText(this, "Input cannot be empty!", Toast.LENGTH_SHORT).show();
             } else {
@@ -70,10 +72,10 @@ public class PopupActivity extends AppCompatActivity {
                 Intent updateIntent = new Intent("com.example.timetracker.UPDATE_BOX");
                 updateIntent.setComponent(new ComponentName(getApplicationContext(), TimeTrackerWidget.class));
                 updateIntent.putExtra("BOX_POSITION", boxPosition);
-                updateIntent.putExtra("INPUT_OPTION", selectedNumber );
+                updateIntent.putExtra("INPUT_OPTION", valuesList.get(selectedNumber) );
                 updateIntent.putExtra("INPUT_VALUE", inputValue);
                 getApplicationContext().sendBroadcast(updateIntent);
-                saveDataToFirebase(inputValue, selectedOption, boxPosition, timestamp);
+                saveDataToFirebase(inputValue, selectedNumber, boxPosition, timestamp);
                 finish();
             }
         });
@@ -81,7 +83,7 @@ public class PopupActivity extends AppCompatActivity {
     }
 
     private void setupNumberPicker(NumberPicker numberPicker, DatabaseReference labelsRef) {
-        ArrayList<String> valuesList = new ArrayList<>(Arrays.asList("YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"));
+
 
         labelsRef.addValueEventListener(new ValueEventListener() {
             @Override
@@ -174,7 +176,7 @@ public class PopupActivity extends AppCompatActivity {
     }
 
 
-    private void saveDataToFirebase(String inputValue, String selectedOption, int boxPosition, long timestamp) {
+    private void saveDataToFirebase(String inputValue, int selectedOption, int boxPosition, long timestamp) {
         // Log data before pushing to Firebase
         Log.d("FirebaseDebug", "Saving data: " + inputValue + ", " + selectedOption + ", " + timestamp);
         String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
@@ -186,7 +188,7 @@ public class PopupActivity extends AppCompatActivity {
             return;
         }
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("user_data").child(userId);
-        BoxData boxData = new BoxData(inputValue, selectedOption, timestamp);
+        BoxData boxData = new BoxData(inputValue, valuesList.get(selectedOption), timestamp);
         databaseReference.child(currentDate).child("box" + boxPosition).setValue(boxData)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {

@@ -1,16 +1,23 @@
 package com.example.timetracker;
 
 import android.app.Activity;
+import android.app.DatePickerDialog;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.Button;
+import android.widget.DatePicker;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
@@ -23,6 +30,7 @@ import com.google.android.gms.auth.api.signin.GoogleSignInClient;
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
 import com.google.android.gms.common.api.ApiException;
 import com.google.android.gms.tasks.Task;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
@@ -39,6 +47,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -55,9 +64,12 @@ public class MainActivity extends AppCompatActivity {
     private Sheets sheetsService;
     private final Executor backgroundExecutor = Executors.newSingleThreadExecutor();
     private ActivityResultLauncher<Intent> signInLauncher;
-
-    private Button btnShowReports, btnShowLabelReports;
+    private AlertDialog signInDialog;
     private GoogleSignInClient mGoogleSignInClient;
+    private ToggleButton toggleDatePicker;
+    private DatePicker datePicker;
+    private BottomNavigationView bottomNavigationView;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,11 +78,72 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        getSupportActionBar().setTitle("");
+
         initializeFirebase();
         initializeGoogleSignIn();
         setupUI();
-        fetchAllBoxesData();
+        String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
+        fetchAllBoxesData(currentDate);
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finish(); // Close the activity
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+            }
+        });
     }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Set the home item as selected
+        bottomNavigationView.setSelectedItemId(R.id.navigation_home);
+        if (!isUserSignedIn()) {
+            showSignInDialog();
+        }
+        invalidateOptionsMenu();
+    }
+    public boolean isUserSignedIn() {
+        GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
+        return account != null;
+    }
+    private void promptSignIn() {
+        Intent signInIntent = mGoogleSignInClient.getSignInIntent();
+        signInLauncher.launch(signInIntent);
+    }
+
+    private void showSignInDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        LayoutInflater inflater = this.getLayoutInflater();
+        View dialogView = inflater.inflate(R.layout.dialog_sign_in, null);
+        builder.setView(dialogView);
+
+        signInDialog = builder.create(); // Create and store the dialog in the signInDialog field
+
+        ImageView googleSignInButton = dialogView.findViewById(R.id.img_google_sign_in);
+        googleSignInButton.setOnClickListener(v -> {
+            // Trigger Google Sign-In
+            promptSignIn();
+        });
+
+        Button remindLaterButton = dialogView.findViewById(R.id.btn_remind_later);
+        remindLaterButton.setOnClickListener(v -> {
+            // Dismiss the dialog, remind later logic here
+            signInDialog.dismiss();  // Correctly dismiss the dialog using the field
+        });
+
+        signInDialog.show(); // Show the dialog stored in the field
+    }
+    private void signOut() {
+        mGoogleSignInClient.signOut().addOnCompleteListener(this, task -> {
+            // Update UI after sign out completes
+            Toast.makeText(MainActivity.this, "Signed out successfully", Toast.LENGTH_SHORT).show();
+            invalidateOptionsMenu();  // Force calling onPrepareOptionsMenu to update the menu item
+        });
+    }
+
+
+
 
     private void initializeFirebase() {
         mDatabase = FirebaseDatabase.getInstance();
@@ -92,12 +165,17 @@ public class MainActivity extends AppCompatActivity {
                 });
     }
 
+
     private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
         try {
             GoogleSignInAccount account = completedTask.getResult(ApiException.class);
             setupGoogleSheetsService(account);
             // Signed in successfully, show authenticated UI.
             Log.i("SignInSuccess", "Signed in as: " + account.getEmail());
+            if (signInDialog != null && signInDialog.isShowing()) {
+                signInDialog.dismiss();
+            }
+            Toast.makeText(this, "Signed in successfully", Toast.LENGTH_SHORT).show();
         } catch (ApiException e) {
             Log.w("SignInFailure", "signInResult:failed code=" + e.getStatusCode());
             // Handle the exception here
@@ -128,15 +206,85 @@ public class MainActivity extends AppCompatActivity {
         box9TextView = findViewById(R.id.box_text_9);
         box10TextView = findViewById(R.id.box_text_10);
         tvCurrentDate = findViewById(R.id.tv_current_date);
-        btnShowReports = findViewById(R.id.btn_show_reports);
-        btnShowLabelReports = findViewById(R.id.show_label_report);
+        datePicker = findViewById(R.id.date_picker);;
+        toggleDatePicker = findViewById(R.id.toggle_date_picker);
+        if (toggleDatePicker == null) {
+            throw new RuntimeException("ToggleButton not found. Check your layout!");
+        }
 
         String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
         tvCurrentDate.setText(currentDate);
+
+
+
+        // Set the navigation item select listener
+
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.navigation_home) {
+//                startActivity(new Intent(this, MainActivity.class));
+                return true;
+            } else if (id == R.id.btn_show_reports) {
+                startActivity(new Intent(this, ReportActivity.class));
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+                return true;
+            } else if (id == R.id.show_label_report) {
+                startActivity(new Intent(this, LabelReportsActivity.class));
+                overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+                return true;
+            }
+            return false;
+        });
+
+        toggleDatePicker.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isChecked) {
+                showDatePickerDialog();
+            } else {
+                datePicker.setVisibility(View.GONE);
+//                setCurrentDate();
+            }
+        });
+
+        // Initialize with current date
+        setCurrentDate();
     }
 
-    private void fetchAllBoxesData() {
+    private void showDatePickerDialog() {
+        // Get current date
+        final Calendar c = Calendar.getInstance();
+        int year = c.get(Calendar.YEAR);
+        int month = c.get(Calendar.MONTH);
+        int day = c.get(Calendar.DAY_OF_MONTH);
+
+        DatePickerDialog datePickerDialog = new DatePickerDialog(this,
+                new DatePickerDialog.OnDateSetListener() {
+                    @Override
+                    public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
+                        Calendar selectedDate = Calendar.getInstance();
+                        selectedDate.set(year, monthOfYear, dayOfMonth);
+                        String formattedDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(selectedDate.getTime());
+                        tvCurrentDate.setText(formattedDate);
+                        fetchAllBoxesData(formattedDate);
+                    }
+                }, year, month, day);
+
+        datePickerDialog.setOnDismissListener(dialog -> {
+            // Check if the DatePickerDialog is dismissed without setting a date
+            if (!datePickerDialog.isShowing()) {
+                toggleDatePicker.setChecked(false);
+            }
+        });
+
+        // Show the dialog
+        datePickerDialog.show();
+    }
+    private void setCurrentDate() {
         String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
+        tvCurrentDate.setText(currentDate);
+//        fetchDataForDate(currentDate);  // Fetch data for the current date
+    }
+    private void fetchAllBoxesData(String currentDate) {
         DatabaseReference dateRef = mDatabase.getReference("user_data").child("user1").child(currentDate);
 
         dateRef.addListenerForSingleValueEvent(new ValueEventListener() {
@@ -184,55 +332,62 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void updateAllTextViewsForNoData(String message) {
-        TextView[] allTextViews = {box1TextView, box2TextView, box3TextView, box4TextView, box5TextView,
-                box6TextView, box7TextView, box8TextView, box9TextView, box10TextView};
+        TextView[] allTextViews = {
+                box1TextView, box2TextView, box3TextView, box4TextView, box5TextView,
+                box6TextView, box7TextView, box8TextView, box9TextView, box10TextView
+        };
+
         for (TextView textView : allTextViews) {
             if (textView != null) {
-                textView.setText(textView.getTag().toString() + " | 😢 | " + message);
+                String tag = (textView.getTag() != null) ? textView.getTag().toString() : "Default Tag";
+                textView.setText(tag + " | 😢 | " + message);
             }
-        }
-    }
-
-
-
-    private TextView findBoxTextView(String boxId) {
-        switch (boxId) {
-            case "box1": return box1TextView;
-            case "box2": return box2TextView;
-            case "box3": return box3TextView;
-            case "box4": return box4TextView;
-            case "box5": return box5TextView;
-            case "box6": return box6TextView;
-            case "box7": return box7TextView;
-            case "box8": return box8TextView;
-            case "box9": return box9TextView;
-            case "box10": return box10TextView;
-            default: return null;
         }
     }
 
     private void updateBoxData(TextView boxTextView, BoxData boxData, String boxId) {
         DatabaseReference labelsRef = mDatabase.getReference("user_data").child("user1").child("labels");
-        int optionIndex = Integer.parseInt(boxData.getSelectedOption()); // Handle potential NumberFormatException
+        String labelName = boxData.getSelectedOption(); // labelName contains the label name directly
 
-        labelsRef.child(String.valueOf(optionIndex)).addListenerForSingleValueEvent(new ValueEventListener() {
+        labelsRef.orderByChild("text").equalTo(labelName).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot emojiSnapshot) {
-                String emoji = emojiSnapshot.exists() ? emojiSnapshot.child("emoji").getValue(String.class) : "🤨";
-                String displayText = boxId + " | " + emoji + " | " + boxData.getData();
+            public void onDataChange(DataSnapshot dataSnapshot) {
+                String emoji = "🤨"; // Default emoji if no match is found
+                String lbl_nam="";
+                if (dataSnapshot.exists()) {
+                    for (DataSnapshot childSnapshot : dataSnapshot.getChildren()) {
+                        emoji = childSnapshot.child("emoji").getValue(String.class);
+                        lbl_nam = childSnapshot.child("text").getValue(String.class);
+                        break; // Assume the first match is the correct one since label names should be unique
+                    }
+                }
+                String displayText = boxId + " | "+lbl_nam + " " + emoji + " | " + boxData.getData();
                 boxTextView.setText(displayText);
             }
 
             @Override
-            public void onCancelled(DatabaseError emojiDatabaseError) {
+            public void onCancelled(DatabaseError databaseError) {
                 boxTextView.setText(boxId + " | 🤨 | " + boxData.getData());
                 Toast.makeText(MainActivity.this, "Failed to fetch emoji", Toast.LENGTH_SHORT).show();
             }
         });
     }
+
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.menu_main, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        MenuItem signInItem = menu.findItem(R.id.sign_in_button);
+        if (isUserSignedIn()) {
+            signInItem.setTitle("Sign Out");
+        } else {
+            signInItem.setTitle("Sign In");
+        }
         return true;
     }
 
@@ -244,6 +399,7 @@ public class MainActivity extends AppCompatActivity {
             // Start the SettingsActivity when the "Settings" item is clicked
             Intent settingsIntent = new Intent(this, SettingsActivity.class);
             startActivity(settingsIntent);
+//            overridePendingTransition(R.anim.slide_in_top_right, R.anim.fade_out);
             return true;
         } else if (id == R.id.download_data) {
             // Check if the user is signed in and initiate data download
@@ -252,16 +408,19 @@ public class MainActivity extends AppCompatActivity {
             } else {
                 Log.e("GoogleAuth", "User is not signed in");
                 // Optionally, prompt the user to sign in here
-                Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-                signInLauncher.launch(signInIntent);
+                Toast.makeText(MainActivity.this, "SignIn Required", Toast.LENGTH_SHORT).show();
+                showSignInDialog();
             }
             return true;
         } else if (id == R.id.sign_in_button) {
-            // Launch the sign-in activity when the sign-in button is clicked
-            Intent signInIntent = mGoogleSignInClient.getSignInIntent();
-            signInLauncher.launch(signInIntent);
+            if (isUserSignedIn()) {
+                signOut();
+            } else {
+                showSignInDialog();
+            }
             return true;
         }
+
 
         return super.onOptionsItemSelected(item);
     }
@@ -270,7 +429,7 @@ public class MainActivity extends AppCompatActivity {
     private void fetchDataFromFirebase() {
         FirebaseDatabase database = FirebaseDatabase.getInstance();
         DatabaseReference ref = database.getReference("user_data/user1");
-
+        Toast.makeText(MainActivity.this, "Fetching Data...", Toast.LENGTH_SHORT).show();
         ref.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -289,7 +448,7 @@ public class MainActivity extends AppCompatActivity {
                                 rowData.add(boxSnapshot.getKey());
                                 rowData.add(boxData.get("data"));
                                 rowData.add(boxData.get("selectedOption"));
-                                rowData.add(boxData.get("timestamp"));
+//                                rowData.add(boxData.get("timestamp"));
                                 rows.add(rowData);
                             } else {
                                 Log.e("DataError", "Unexpected data type in Firebase: " + rawValue.getClass().getName());
@@ -303,6 +462,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 Log.w("FirebaseData", "loadPost:onCancelled", databaseError.toException());
+                Toast.makeText(MainActivity.this, "Fetching Data Failed!", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -310,7 +470,7 @@ public class MainActivity extends AppCompatActivity {
     private void writeToGoogleSheet(List<List<Object>> data) {
         String userId = "user1"; // Replace with FirebaseAuth.getInstance().getCurrentUser().getUid(); for actual user IDs
         DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users").child(userId).child("spreadsheetId");
-
+        Toast.makeText(MainActivity.this, "Writing Data...", Toast.LENGTH_SHORT).show();
         ref.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -330,6 +490,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onCancelled(DatabaseError databaseError) {
                 Log.e("Firebase", "Failed to read spreadsheet ID", databaseError.toException());
+                Toast.makeText(MainActivity.this, "Writing Data Failed!", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -372,6 +533,8 @@ public class MainActivity extends AppCompatActivity {
     private void updateSpreadsheet(String spreadsheetId, List<List<Object>> data) {
         if (sheetsService == null) {
             Log.e("GoogleSheets", "Sheets service has not been initialized");
+            Toast.makeText(MainActivity.this, "SignIn Required !", Toast.LENGTH_SHORT).show();
+            showSignInDialog();
             return;
         }
         String range = "Sheet1!A1";  // Adjust as needed.
@@ -383,16 +546,19 @@ public class MainActivity extends AppCompatActivity {
                         .setValueInputOption("USER_ENTERED")
                         .execute();
                 Log.i("GoogleSheets", "Data updated successfully.");
+
                 // Show the link to the updated spreadsheet
                 runOnUiThread(() -> showSpreadsheetLink(spreadsheetId));
             } catch (Exception e) {
                 Log.e("GoogleSheets", "Failed to update data", e);
+                Toast.makeText(MainActivity.this, "Sheet Update Failed !", Toast.LENGTH_SHORT).show();
             }
         });
     }
 
 
     private void showSpreadsheetLink(String spreadsheetId) {
+        Toast.makeText(MainActivity.this, "Sheet Updated Successfully!", Toast.LENGTH_SHORT).show();
         String url = "https://docs.google.com/spreadsheets/d/" + spreadsheetId;
         AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
         builder.setTitle("Access Your Spreadsheet");
@@ -404,6 +570,7 @@ public class MainActivity extends AppCompatActivity {
         builder.setNegativeButton("Cancel", (dialog, which) -> dialog.dismiss());
         builder.show();
     }
+
 
 
 }

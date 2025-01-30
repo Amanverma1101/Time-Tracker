@@ -1,55 +1,106 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView
-    android:layout_height="wrap_content"
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent">
-<LinearLayout
-    xmlns:tools="http://schemas.android.com/tools"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/report_container"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:background="@drawable/gradient_background"
-    android:orientation="vertical"
-    android:padding="16dp"
-    tools:ignore="MissingClass">
+    android:layout_height="match_parent"
+    android:background="@drawable/gradient_background">
 
-    <TextView
+
+
+
+
+    <com.google.android.material.bottomnavigation.BottomNavigationView
+        android:id="@+id/bottom_navigation"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Activity Analysis Reports"
-        android:textAlignment="center"
-        android:textColor="@android:color/white"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp"/>
+        android:layout_alignParentBottom="true"
+        android:background="@color/purple_200"
+        app:menu="@menu/bottom_navigation_menu" />
 
-    <!-- Placeholder for charts or other visual components -->
-<!--    <FrameLayout-->
-<!--        android:id="@+id/chart_container"-->
-<!--        android:layout_width="match_parent"-->
-<!--        android:layout_height="0dp"-->
-<!--        android:layout_weight="1"/>-->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@id/bottom_navigation"
+        android:layout_alignParentTop="true">
 
-    <FrameLayout
-        android:id="@+id/chart_container"
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:layout_marginBottom="24dp"
-        android:background="#00B0FF"
-        android:elevation="4dp" />
-    <FrameLayout
-        android:id="@+id/second_chart_container"
-        android:layout_width="match_parent"
-        android:layout_height="300dp"
-        android:layout_marginBottom="24dp"
-        android:background="#00B0FF"
-        android:elevation="4dp" />
-    <!--Ui component for our bar chart-->
-    <com.github.mikephil.charting.charts.BarChart
-        android:id="@+id/barChart"
-        android:layout_width="match_parent"
-        android:layout_height="400dp"
-        android:background="#00B0FF"
-        android:elevation="4dp" />
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
 
-</LinearLayout>
-</ScrollView>
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Activity Analysis Reports"
+                android:textAlignment="center"
+                android:textColor="@android:color/white"
+                android:textSize="24sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"/>
+
+            <LinearLayout
+                android:id="@+id/date_navigation"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:padding="8dp">
+
+                <ImageButton
+                    android:id="@+id/left_arrow"
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/left"
+                    android:scaleType="fitCenter"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"/>
+
+                <TextView
+                    android:id="@+id/date_display"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="01-Jan-2025"
+                    android:textSize="18sp"
+                    android:background="@drawable/curved_border"
+                    android:padding="8dp"
+                    android:layout_marginHorizontal="20dp"/>
+
+                <ImageButton
+                    android:id="@+id/right_arrow"
+                    android:layout_width="35dp"
+                    android:layout_height="35dp"
+                    android:src="@drawable/next"
+                    android:scaleType="fitCenter"
+                    android:background="?android:attr/selectableItemBackgroundBorderless"/>
+            </LinearLayout>
+
+            <ImageView
+                android:id="@+id/no_data_image"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerHorizontal="true"
+                android:layout_below="@id/date_display"
+                android:src="@drawable/no_data"
+            android:visibility="gone" />
+
+
+            <FrameLayout
+                android:id="@+id/chart_container"
+                android:layout_width="match_parent"
+                android:layout_height="300dp"
+                android:layout_marginBottom="24dp"
+                android:background="#00B0FF"
+                android:elevation="4dp" />
+
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/barChart"
+                android:layout_width="match_parent"
+                android:layout_height="400dp"
+                android:background="#00B0FF"
+                android:elevation="4dp"
+                android:padding="12dp"/>
+
+        </LinearLayout>
+    </ScrollView>
+</RelativeLayout>

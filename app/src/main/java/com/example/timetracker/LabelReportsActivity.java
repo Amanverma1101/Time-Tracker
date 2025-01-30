@@ -1,23 +1,31 @@
 package com.example.timetracker;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.graphics.Color;
 import android.icu.text.SimpleDateFormat;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.content.ContextCompat;
 
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -27,6 +35,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -39,23 +48,68 @@ public class LabelReportsActivity extends AppCompatActivity {
     private LinearLayout fullDataLayout, dataLayout;
     private HashMap<String, Integer> labelImages; // Map label names to drawable IDs
     private DatabaseReference databaseReference;
+    private BottomNavigationView bottomNavigationView;
+
+    private TextView emojiView;
     private final List<String> labels = new ArrayList<>();
+    private final List<String> emojis = new ArrayList<>();
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_label_reports);
-
+        setupUI();
         labelSpinner = findViewById(R.id.label_spinner);
         labelImage = findViewById(R.id.label_image);
         fullDataLayout = findViewById(R.id.full_data_container);
         dataLayout = findViewById(R.id.data_container);
+        emojiView = findViewById(R.id.emoji_view);
 
         setupLabelImages();
         setupFirebase();
         setupSpinner();
+
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                finish(); // Close the activity
+                overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+            }
+        });
     }
 
+
+
+    private void setupUI() {
+        bottomNavigationView = findViewById(R.id.bottom_navigation);
+
+
+        bottomNavigationView.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.navigation_home) {
+                Intent intent = new Intent(this, MainActivity.class);
+                startActivity(intent);
+                overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right); // Smooth transition
+                return true;
+            } else if (id == R.id.btn_show_reports) {
+                startActivity(new Intent(this, ReportActivity.class));
+                overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+                return true;
+            } else if (id == R.id.show_label_report) {
+//                startActivity(new Intent(this, LabelReportsActivity.class));
+                return true;
+            }
+            return false;
+        });
+    }
+    @Override
+    protected void onResume() {
+        super.onResume();
+        bottomNavigationView.setSelectedItemId(R.id.show_label_report);
+
+    }
     private void setupLabelImages() {
         labelImages = new HashMap<>();
         labelImages.put("YouTube", R.drawable.yt);
@@ -84,7 +138,7 @@ public class LabelReportsActivity extends AppCompatActivity {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 labels.clear();
-                labels.addAll(Arrays.asList("YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"));
+//                labels.addAll(Arrays.asList("YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"));
                 Log.d("LabelReportsActivity", "Snapshot: " + dataSnapshot.toString());  // Log the entire snapshot
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
                     GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {};
@@ -92,6 +146,10 @@ public class LabelReportsActivity extends AppCompatActivity {
                     // Retrieve the text part of the label
                     if (labelData != null) {
                         String label = labelData.get("text");
+                        String emoji_icon = labelData.get("emoji");
+                        if(emoji_icon!=null){
+                            emojis.add(emoji_icon);
+                        }
                         if (label != null) {
                             labels.add(label);
                         } else {
@@ -123,20 +181,57 @@ public class LabelReportsActivity extends AppCompatActivity {
             }
         });
     }
-
+    private int convertDpToPixels(int dp) {
+        return (int) (dp * getResources().getDisplayMetrics().density + 0.5f);
+    }
     private void updateUIForLabel(String label) {
         // Update the image and data for the selected label
         int imageRes = labelImages.getOrDefault(label, 0);
-        if(imageRes==0){
-            imageRes = R.drawable.def;
+        if (imageRes == 0) {
+            // Set emojiView visible and update its properties
+            emojiView.setVisibility(View.VISIBLE);
+            int idx = labels.indexOf(label);
+            if (idx != -1 && idx >= 0) {
+                emojiView.setText(emojis.get(idx));
+            } else {
+                emojiView.setText("🔃");
+            }
+            LinearLayout.LayoutParams emojiParams = new LinearLayout.LayoutParams(
+                    (int) (150 * getResources().getDisplayMetrics().density), // converts 150dp to pixels
+                    (int) (150 * getResources().getDisplayMetrics().density)  );// converts 150dp to pixels
+            emojiParams.gravity = Gravity.CENTER_HORIZONTAL; // Set the gravity specifically for the layout params
+
+            emojiView.setLayoutParams(emojiParams);
+            emojiView.setGravity(Gravity.CENTER);
+            emojiView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 60); // Set emoji size
+            emojiView.setBackground(ContextCompat.getDrawable(this, R.drawable.circular_background));
+
+            // Clear and hide labelImage
+            labelImage.setVisibility(View.GONE);
+            labelImage.setImageDrawable(null); // Optional: Clear the current image resource
+        } else {
+            // Set labelImage visible and update its properties
+            labelImage.setVisibility(View.VISIBLE);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
+                    (int) (150 * getResources().getDisplayMetrics().density), // converts 150dp to pixels
+                    (int) (150 * getResources().getDisplayMetrics().density)  // converts 150dp to pixels
+            );
+            params.gravity = Gravity.CENTER_HORIZONTAL;
+            labelImage.setLayoutParams(params);
+            labelImage.setImageResource(imageRes);
+            labelImage.setBackgroundResource(R.drawable.circular_background);
+
+            // Clear and hide emojiView
+            emojiView.setVisibility(View.GONE);
+            emojiView.setText(""); // Clear the text
         }
-        labelImage.setImageResource(imageRes);
+
+
         updateDataText(label);
     }
 
     private void updateDataText(String label) {
         DatabaseReference userRef =  FirebaseDatabase.getInstance().getReference("user_data").child("user1");
-        int labelIndex = getLabelIndex(label); // Assuming you have a method to convert label to an index.
 
         userRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
@@ -173,17 +268,9 @@ public class LabelReportsActivity extends AppCompatActivity {
                         for (DataSnapshot entrySnapshot : dateSnapshot.getChildren()) {
                             Log.d("onDataChange", "onDataChange3: "+entrySnapshot.toString());
                             String selectedOption = entrySnapshot.child("selectedOption").getValue(String.class);
-                            int option; // Declare the variable option.
 
-                            try {
-                                // Attempt to parse the selectedOption string to an int.
-                                option = Integer.parseInt(selectedOption);
-                            } catch (NumberFormatException e) {
-                                // If parsing fails, set option to 0.
-                                option = -1;
-                            }
                             //Check if selectedOption is not null and equals labelIndex
-                            if (option ==labelIndex) {
+                            if (selectedOption.equals(label)) {
                                 String time = entrySnapshot.getKey(); // Assuming the key is the time
                                 String data = entrySnapshot.child("data").getValue(String.class);
 
@@ -229,14 +316,6 @@ public class LabelReportsActivity extends AppCompatActivity {
                 Log.e("updateDataText", "Error fetching data", databaseError.toException());
             }
         });
-    }
-
-
-
-
-    private int getLabelIndex(String label) {
-        // You need to implement this based on your application's logic
-        return labels.indexOf(label);
     }
 
 }
