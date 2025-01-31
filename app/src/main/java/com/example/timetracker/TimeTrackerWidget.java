@@ -1,12 +1,17 @@
 package com.example.timetracker;
 
+import static android.content.Context.MODE_PRIVATE;
+
 import android.annotation.SuppressLint;
 import android.app.PendingIntent;
+import android.content.SharedPreferences;
 import android.appwidget.AppWidgetManager;
 import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.icu.text.SimpleDateFormat;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -23,6 +28,14 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+
+import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+import java.util.Locale;
 
 public class TimeTrackerWidget extends AppWidgetProvider {
 
@@ -35,34 +48,100 @@ public class TimeTrackerWidget extends AppWidgetProvider {
 
     private static int currentBoxId = -1; // Track the currently clicked box
     public static boolean[] timerRunning = new boolean[10]; // Flag to prevent multiple timers
-
+    private ArrayList<String> valuesList = new ArrayList<>();
+    public static ArrayList<String> emojiList = new ArrayList<>();
     public static boolean isRunningCurrently = false;
+
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        super.onUpdate(context, appWidgetManager, appWidgetIds);
+
+        // Fetch stored labels from SharedPreferences
+        List<SettingsActivity.EmojiData> localLabels = getEmojiList(context);
+        if (localLabels != null && !localLabels.isEmpty()) {
+            valuesList.clear(); // Clear existing list
+            emojiList.clear();
+            for (SettingsActivity.EmojiData label : localLabels) {
+                valuesList.add(label.text); // Store only label text
+                emojiList.add(label.emoji);
+            }
+        }
         for (int appWidgetId : appWidgetIds) {
             RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.time_tracker_widget);
+            List<Integer> completedBoxes = new ArrayList<>();
+            // Get today's date in "dd-MM-yyyy" format
+            String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
+            DatabaseReference ref = FirebaseDatabase.getInstance().getReference("user_data").child("user1").child(currentDate);
 
-            int[] boxIds = {
-                    R.id.box_1, R.id.box_2, R.id.box_3, R.id.box_4, R.id.box_5,
-                    R.id.box_6, R.id.box_7, R.id.box_8, R.id.box_9, R.id.box_10
-            };
+            ref.addListenerForSingleValueEvent(new ValueEventListener() {
 
-            // Set up PendingIntent for box clicks
-            for (int i = 0; i < boxIds.length; i++) {
-                final int boxPosition = i + 1; // Position 1-10
-                Intent clickBoxIntent = new Intent(context, TimeTrackerWidget.class);
-                clickBoxIntent.setAction(ACTION_CLICK_BOX);
-                clickBoxIntent.putExtra(EXTRA_POSITION, boxPosition);
-                clickBoxIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId); // Pass appWidgetId
-                PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                        context, boxPosition, clickBoxIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-                views.setOnClickPendingIntent(boxIds[i], pendingIntent);
-            }
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    for (DataSnapshot boxSnapshot : dataSnapshot.getChildren()) {
+                        String boxKey = boxSnapshot.getKey(); // "box1", "box2", etc.
+                        int boxPosition = Integer.parseInt(boxKey.replace("box", "")); // Extract box number
 
-            appWidgetManager.updateAppWidget(appWidgetId, views);
+                        String text = boxSnapshot.child("data").getValue(String.class);
+                        String emoji = boxSnapshot.child("selectedOption").getValue(String.class);
+                        String fetch_emoji = emojiList.get(valuesList.indexOf(emoji));
+
+                        if (text == null) text = "";
+                        if (fetch_emoji == null) fetch_emoji = "🗓️";
+
+                        int textViewId = getBoxTextViewId(boxPosition);
+                        int emojiTextViewId = getBoxImageViewId(boxPosition);
+
+                        if (textViewId != -1 && emojiTextViewId != -1) {
+                            views.setTextViewText(textViewId, text);
+                            views.setTextViewText(emojiTextViewId, fetch_emoji);
+                        }
+                        timerRunning[boxPosition - 1] = true;
+                        completedBoxes.add(boxPosition);
+                    }
+
+                    int[] boxIds = {
+                            R.id.box_1, R.id.box_2, R.id.box_3, R.id.box_4, R.id.box_5,
+                            R.id.box_6, R.id.box_7, R.id.box_8, R.id.box_9, R.id.box_10
+                    };
+
+                    for (int boxId : completedBoxes) {
+                        int boxViewId = boxIds[boxId-1];
+                        if (boxViewId != -1) {
+                            views.setInt(boxViewId, "setBackgroundResource", R.drawable.box_border);
+                        }
+                    }
+
+
+                    // Set up PendingIntent for box clicks
+                    for (int i = 0; i < boxIds.length; i++) {
+                        final int boxPosition = i + 1; // Position 1-10
+                        Intent clickBoxIntent = new Intent(context, TimeTrackerWidget.class);
+                        clickBoxIntent.setAction(ACTION_CLICK_BOX);
+                        clickBoxIntent.putExtra(EXTRA_POSITION, boxPosition);
+                        clickBoxIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId); // Pass appWidgetId
+                        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                                context, boxPosition, clickBoxIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                        views.setOnClickPendingIntent(boxIds[i], pendingIntent);
+                    }
+
+                    appWidgetManager.updateAppWidget(appWidgetId, views);
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    Log.e("FirebaseError", "Failed to load saved data: " + databaseError.getMessage());
+                }
+            });
         }
-
     }
+    private List<SettingsActivity.EmojiData> getEmojiList(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        Gson gson = new Gson();
+        String json = prefs.getString("emoji_list", null);
+        Type type = new TypeToken<List<SettingsActivity.EmojiData>>() {}.getType();
+        return json != null ? gson.fromJson(json, type) : new ArrayList<>();
+    }
+
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -73,13 +152,12 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         if (ACTION_CLICK_BOX.equals(action)) {
             int boxId = intent.getIntExtra(EXTRA_POSITION, -1);
             int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
-            Log.d("WidgetReceiver", "Box clicked: " + boxId);
-            Log.d("TimerState", "timerRunning for Box " + boxId + ": " + timerRunning[boxId - 1]);
+//            Log.d("WidgetReceiver", "Box clicked: " + boxId);
+//            Log.d("TimerState", "timerRunning for Box " + boxId + ": " + timerRunning[boxId - 1]);
 
             if (boxId != -1 && appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID && !isRunningCurrently) {
                 if (!timerRunning[boxId - 1]) {
                     timerRunning[boxId - 1] = true;
-//                    new Handler().postDelayed(() -> openPopup(context, boxId), 11000);
                     currentBoxId = boxId - 1;  // Store the clicked box ID (0-indexed)
 //                    startTimer(context, appWidgetId, boxId);
                     startTimerService(context, boxId, appWidgetId);
@@ -99,6 +177,7 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         else if ("com.example.timetracker.UPDATE_BOX".equals(action)) {
             int boxPosition = intent.getIntExtra("BOX_POSITION", -1);
             String inputValue = intent.getStringExtra("INPUT_VALUE");
+            String inputEmoji = intent.getStringExtra("INPUT_EMOJI");
             String inputOption = intent.getStringExtra("INPUT_OPTION"); // Ensure this gets the label text
 
             if (boxPosition != -1 && inputOption != null) {
@@ -107,47 +186,20 @@ public class TimeTrackerWidget extends AppWidgetProvider {
                 int textViewId = getBoxTextViewId(boxPosition);
                 int emojiTextViewId = getBoxImageViewId(boxPosition);  // TextView for emoji
 
-                // Reference to labels in Firebase
-                DatabaseReference ref = FirebaseDatabase.getInstance().getReference("user_data").child("user1").child("labels");
-
-                ref.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        String foundEmoji = "🤨"; // Default emoji if not found
-
-                        // Iterate over all label entries
-                        for (DataSnapshot labelSnapshot : dataSnapshot.getChildren()) {
-                            String labelText = labelSnapshot.child("text").getValue(String.class);
-                            if (labelText != null && labelText.equalsIgnoreCase(inputOption)) {
-                                foundEmoji = labelSnapshot.child("emoji").getValue(String.class);
-                                break; // Stop once we find the match
-                            }
-                        }
-
-                        if (textViewId != -1 && emojiTextViewId != -1) {
-                            views.setTextViewText(textViewId, inputValue); // Set input value
-                            views.setTextViewText(emojiTextViewId, foundEmoji); // Set emoji
-
-                            ComponentName widget = new ComponentName(context, TimeTrackerWidget.class);
-                            appWidgetManager.updateAppWidget(widget, views);
-                        }
+                if (textViewId != -1 && emojiTextViewId != -1) {
+                    views.setTextViewText(textViewId, inputValue); // Set input value
+                    if(inputEmoji!=null && !inputEmoji.isEmpty()) {
+                        views.setTextViewText(emojiTextViewId, inputEmoji);
+                    }else{
+                        views.setTextViewText(emojiTextViewId, "📅");
                     }
 
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        Log.e("FirebaseError", "Failed to fetch emoji: " + databaseError.getMessage());
-                    }
-                });
+                    ComponentName widget = new ComponentName(context, TimeTrackerWidget.class);
+                    appWidgetManager.updateAppWidget(widget, views);
+                }
             }
         }
 
-
-        else if ("com.example.timetracker.START_TIMER_ACTION".equals(intent.getAction())) {
-            int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
-            if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-                startTimer(context, appWidgetId, currentBoxId + 1); // Start the timer for the selected box
-            }
-        }
         else if (ACTION_APPLY_BORDER.equals(action)) {
             int boxId = intent.getIntExtra(EXTRA_POSITION, -1);
 //            Log.d( "box_click","box clicked2 is : "+boxId);
@@ -168,48 +220,6 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         }
     }
 
-    private void startTimer(Context context, int appWidgetId, int boxId) {
-        timerRunning[boxId-1] = true;
-        isRunningCurrently = true;
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.time_tracker_widget);
-        int timerDuration = 10; // Timer duration in seconds
-
-        // Set initial timer text
-        views.setTextViewText(R.id.timer_display, "00:10");
-        AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
-
-        // Use CountDownTimer for live updates
-        new CountDownTimer(timerDuration * 1000, 1000) {
-            int secondsRemaining = timerDuration;
-
-            @Override
-            public void onTick(long millisUntilFinished) {
-                secondsRemaining--;
-                Log.d( "onTick","secondsRemaining: "+secondsRemaining);
-                String timerText = String.format("%02d:%02d", secondsRemaining / 60, secondsRemaining % 60);
-                views.setTextViewText(R.id.timer_display, timerText);
-                AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
-            }
-
-            @Override
-            public void onFinish() {
-                views.setTextViewText(R.id.timer_display, "00:00");
-                AppWidgetManager.getInstance(context).updateAppWidget(appWidgetId, views);
-                openPopup(context, boxId);
-
-                isRunningCurrently = false;
-
-                // Play the buzzer sound
-                playBuzzer(context);
-
-                // Apply border to the clicked box after the timer finishes
-                applyBorderToBox(context, boxId); // Correctly pass appWidgetId
-
-//                openPopup(context, boxId);
-                triggerBoxClick(context, boxId, appWidgetId);
-            }
-        }.start();
-    }
 
     private void applyBorderToBox(Context context, int boxId) {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
@@ -226,25 +236,6 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         }
     }
 
-    private void playBuzzer(Context context) {
-        try {
-            // Get the default alarm tone URI
-            Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
-
-            if (alarmUri == null) {
-                alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-            }
-
-            Ringtone ringtone = RingtoneManager.getRingtone(context, alarmUri);
-            ringtone.play();
-
-            // Stop after 5 seconds
-            new Handler().postDelayed(ringtone::stop, 5000);
-        } catch (Exception e) {
-            e.printStackTrace();
-            Toast.makeText(context, "Error playing alarm tone", Toast.LENGTH_SHORT).show();
-        }
-    }
 
     private void openPopup(Context context, int boxId) {
         Log.d("openPopup", "Attempting to open Popup for Box ID: " + boxId);
@@ -252,27 +243,20 @@ public class TimeTrackerWidget extends AppWidgetProvider {
         popupIntent.putExtra("BOX_POSITION", boxId);
         popupIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(popupIntent);
-
-//        try {
-//            context.startActivity(popupIntent);
-//            Log.d("openPopup", "Popup should now be visible for Box ID: " + boxId);
-//        } catch (Exception e) {
-//            Log.e("openPopup", "Failed to open popup", e);
-//        }
     }
 
 
 
-    private void triggerBoxClick(Context context, int boxId, int appWidgetId) {
-        // Create an Intent for the ACTION_CLICK_BOX broadcast
-        Intent clickBoxIntent = new Intent(context, TimeTrackerWidget.class);
-        clickBoxIntent.setAction(ACTION_CLICK_BOX);
-        clickBoxIntent.putExtra(EXTRA_POSITION, boxId);
-        clickBoxIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
-
-        // Send the broadcast to simulate the click
-        context.sendBroadcast(clickBoxIntent);
-    }
+//    private void triggerBoxClick(Context context, int boxId, int appWidgetId) {
+//        // Create an Intent for the ACTION_CLICK_BOX broadcast
+//        Intent clickBoxIntent = new Intent(context, TimeTrackerWidget.class);
+//        clickBoxIntent.setAction(ACTION_CLICK_BOX);
+//        clickBoxIntent.putExtra(EXTRA_POSITION, boxId);
+//        clickBoxIntent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId);
+//
+//        // Send the broadcast to simulate the click
+//        context.sendBroadcast(clickBoxIntent);
+//    }
     @SuppressLint("NewApi")
     private void startTimerService(Context context, int boxId, int appWidgetId) {
         Intent serviceIntent = new Intent(context, TimerService.class);

@@ -7,6 +7,7 @@ import android.app.Service;
 import android.content.ComponentName;
 import android.content.Intent;
 import android.os.CountDownTimer;
+import android.os.Handler;
 import android.os.IBinder;
 import androidx.core.app.NotificationCompat;
 import android.app.NotificationManager;
@@ -85,6 +86,7 @@ public class TimerService extends Service {
             }
             Ringtone ringtone = RingtoneManager.getRingtone(getApplicationContext(), alarmUri);
             ringtone.play();
+            new Handler().postDelayed(ringtone::stop, 5000);
         } catch (Exception e) {
             Log.e("TimerService", "Error playing sound: " + e.getMessage());
         }

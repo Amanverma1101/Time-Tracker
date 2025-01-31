@@ -4,6 +4,7 @@ package com.example.timetracker;
 import android.appwidget.AppWidgetManager;
 import android.content.ComponentName;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Button;
@@ -18,11 +19,15 @@ import com.google.firebase.database.ValueEventListener;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -30,7 +35,19 @@ public class PopupActivity extends AppCompatActivity {
     private FirebaseDatabase mDatabase;
     private FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
     private ArrayList<String> valuesList = new ArrayList<>();
+    public static ArrayList<String> emojiList = new ArrayList<>();
     private static final String TAG = "PopupActivity";
+
+    static class EmojiData {
+        String emoji;
+        String text;
+
+        public EmojiData(String emoji, String text) {
+            this.emoji = emoji;
+            this.text = text;
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,11 +62,9 @@ public class PopupActivity extends AppCompatActivity {
 //        String[] values = new String[] {"YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"};
         FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
         String userId = "user1";
-        DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
-
         // Get the NumberPicker reference
         NumberPicker numberPicker = findViewById(R.id.number_picker);
-        setupNumberPicker(numberPicker, labelsRef);
+        setupNumberPicker(numberPicker);
         // Initialize EditText
         EditText inputField = findViewById(R.id.input_field);
 
@@ -73,6 +88,7 @@ public class PopupActivity extends AppCompatActivity {
                 updateIntent.setComponent(new ComponentName(getApplicationContext(), TimeTrackerWidget.class));
                 updateIntent.putExtra("BOX_POSITION", boxPosition);
                 updateIntent.putExtra("INPUT_OPTION", valuesList.get(selectedNumber) );
+                updateIntent.putExtra("INPUT_EMOJI", emojiList.get(selectedNumber));
                 updateIntent.putExtra("INPUT_VALUE", inputValue);
                 getApplicationContext().sendBroadcast(updateIntent);
                 saveDataToFirebase(inputValue, selectedNumber, boxPosition, timestamp);
@@ -82,39 +98,38 @@ public class PopupActivity extends AppCompatActivity {
 
     }
 
-    private void setupNumberPicker(NumberPicker numberPicker, DatabaseReference labelsRef) {
+    private void setupNumberPicker(NumberPicker numberPicker) {
+        // **Fetch Labels from Local Storage Instead of Firebase**
+        List<EmojiData> localLabels = getEmojiList();
 
-
-        labelsRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {
-                    };
-                    Map<String, String> labelData = snapshot.getValue(t);
-                    // Retrieve the text part of the label
-                    if (labelData != null) {
-                        String label = labelData.get("text");
-                        if (label != null) {
-                            if (!valuesList.contains(label)) {
-                                valuesList.add(label);
-                            }
-                        }
-                    }
-                }
-                String[] values = valuesList.toArray(new String[0]);
-                numberPicker.setMinValue(0);
-                numberPicker.setMaxValue(values.length - 1);
-                numberPicker.setDisplayedValues(null);  // Clear old values
-                numberPicker.setDisplayedValues(values);
-                numberPicker.setWrapSelectorWheel(true);
+        if (localLabels != null && !localLabels.isEmpty()) {
+            valuesList.clear(); // Clear existing list
+            emojiList.clear();
+            for (EmojiData label : localLabels) {
+                valuesList.add(label.text); // Store only label text
+                emojiList.add(label.emoji);
             }
+        }
 
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.w("PopupActivityDebug", "loadLabels:onCancelled", databaseError.toException());
-            }
-        });
+        // Convert list to array and set values in NumberPicker
+        String[] values = valuesList.toArray(new String[0]);
+        if (values.length > 0) {
+            numberPicker.setMinValue(0);
+            numberPicker.setMaxValue(values.length - 1);
+            numberPicker.setDisplayedValues(null);  // Clear old values
+            numberPicker.setDisplayedValues(values);
+            numberPicker.setWrapSelectorWheel(true);
+        } else {
+            Toast.makeText(this, "No labels found in local storage", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private List<EmojiData> getEmojiList() {
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        Gson gson = new Gson();
+        String json = prefs.getString("emoji_list", null);
+        Type type = new TypeToken<List<EmojiData>>() {}.getType();
+        return json != null ? gson.fromJson(json, type) : new ArrayList<>();
     }
 
 

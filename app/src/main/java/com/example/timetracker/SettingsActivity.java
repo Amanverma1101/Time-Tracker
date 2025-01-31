@@ -1,7 +1,11 @@
 package com.example.timetracker;
 
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
@@ -26,6 +30,9 @@ import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.core.content.ContextCompat;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.ibm.icu.text.BreakIterator;
 
 import com.google.firebase.database.DataSnapshot;
@@ -35,7 +42,10 @@ import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.GenericTypeIndicator;
 import com.google.firebase.database.ValueEventListener;
 
+import java.lang.reflect.Type;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class SettingsActivity extends AppCompatActivity {
@@ -45,6 +55,16 @@ public class SettingsActivity extends AppCompatActivity {
     private EditText newLabelInput;
     private FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
     private boolean isAddingNew = false; // Flag to check if adding a new label
+
+    static class EmojiData {
+        String emoji;
+        String text;
+
+        public EmojiData(String emoji, String text) {
+            this.emoji = emoji;
+            this.text = text;
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -91,26 +111,31 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void loadLabelsFromRealtimeDB() {
+        if (!isNetworkAvailable()) {
+            loadLabelsFromLocalStorage();
+            return;
+        }
+
         String userId = "user1";
         DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
 
         labelsRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                labelContainer.removeAllViews(); // Clears all existing views to prevent duplication
+                labelContainer.removeAllViews(); // Clears existing views
+                List<EmojiData> labelList = new ArrayList<>();
+
                 for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    // Use GenericTypeIndicator to specify the expected type
                     GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {};
                     Map<String, String> labelData = snapshot.getValue(t);
                     if (labelData != null) {
-                        String label = labelData.get("text");// Retrieve the text part of the label
+                        String label = labelData.get("text");
                         String emoji = labelData.get("emoji");
                         if (label != null) {
-                            FrameLayout labelView = createLabelView(label, emoji, R.drawable.def); // Assuming createLabelView handles only text for now
+                            FrameLayout labelView = createLabelView(label, emoji, R.drawable.def);
                             String key = snapshot.getKey();
-
                             labelContainer.addView(labelView);
-
+                            labelList.add(new EmojiData(emoji, label));
                             labelView.setOnLongClickListener(v -> {
                                 showPopup(v, label, key);
                                 return true;
@@ -118,14 +143,62 @@ public class SettingsActivity extends AppCompatActivity {
                         }
                     }
                 }
+                saveEmojiList(labelList); // Save data locally
             }
 
             @Override
             public void onCancelled(DatabaseError databaseError) {
-                Toast.makeText(getApplicationContext(), "Error loading labels: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                loadLabelsFromLocalStorage();
             }
         });
     }
+
+    private void loadLabelsFromLocalStorage() {
+        List<EmojiData> localLabels = getEmojiList();
+
+        if (localLabels != null && !localLabels.isEmpty()) {
+            labelContainer.removeAllViews();
+
+            for (EmojiData item : localLabels) {
+                FrameLayout labelView = createLabelView(item.text, item.emoji, R.drawable.def);
+                labelContainer.addView(labelView);
+            }
+
+            Toast.makeText(this, "Loaded from local storage", Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "No saved labels found!", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    private void saveEmojiList(List<EmojiData> emojiList) {
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+
+        Gson gson = new Gson();
+        String json = gson.toJson(emojiList);
+        editor.putString("emoji_list", json);
+        editor.apply();
+    }
+
+    private List<EmojiData> getEmojiList() {
+        SharedPreferences prefs = getSharedPreferences("MyAppPrefs", MODE_PRIVATE);
+        Gson gson = new Gson();
+        String json = prefs.getString("emoji_list", null);
+        Type type = new TypeToken<List<EmojiData>>() {}.getType();
+
+        return json != null ? gson.fromJson(json, type) : new ArrayList<>();
+    }
+    private boolean isNetworkAvailable() {
+        ConnectivityManager connectivityManager =
+                (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager != null) {
+            NetworkInfo activeNetwork = connectivityManager.getActiveNetworkInfo();
+            return activeNetwork != null && activeNetwork.isConnected();
+        }
+        return false;
+    }
+
 
     private void showPopup(View view, String label, String key) {
         PopupMenu popup = new PopupMenu(SettingsActivity.this, view);
@@ -134,10 +207,11 @@ public class SettingsActivity extends AppCompatActivity {
         popup.setOnMenuItemClickListener(item -> {
 //            Log.d("MenuTest", "Menu item selected ID: " + item.getItemId());
             int id = item.getItemId();
-            if (id == R.id.edit) {
-                editLabel(label, key);
-                return true;
-            } else if (id == R.id.delete) {
+//            if (id == R.id.edit) {
+////                editLabel(label, key);
+//                return true;
+//            } else
+                if (id == R.id.delete) {
                 deleteLabel(view, key);
                 return true;
             } else {
@@ -302,7 +376,7 @@ public class SettingsActivity extends AppCompatActivity {
             DatabaseReference rootRef = firebaseDatabase.getReference("user_data").child(userId);
             DatabaseReference labelsRef = rootRef.child("labels");
             DatabaseReference counterRef = rootRef.child("labelCounter");
-            
+
 
             // Read the current counter
             counterRef.addListenerForSingleValueEvent(new ValueEventListener() {
