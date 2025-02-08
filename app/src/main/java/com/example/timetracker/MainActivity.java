@@ -1,8 +1,11 @@
 package com.example.timetracker;
 
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.DatePickerDialog;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -20,6 +23,7 @@ import android.widget.ToggleButton;
 import androidx.activity.OnBackPressedCallback;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -44,22 +48,24 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.gson.Gson;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
     private FirebaseDatabase mDatabase;
-    private TextView box1TextView, box2TextView, box3TextView, box4TextView, box5TextView;
-    private TextView box6TextView, box7TextView, box8TextView, box9TextView, box10TextView;
+    TextView[] boxTextViews = new TextView[144];
     private TextView tvCurrentDate;
     private Sheets sheetsService;
     private final Executor backgroundExecutor = Executors.newSingleThreadExecutor();
@@ -78,7 +84,7 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("");
+        Objects.requireNonNull(getSupportActionBar()).setTitle("");
 
         initializeFirebase();
         initializeGoogleSignIn();
@@ -111,6 +117,17 @@ public class MainActivity extends AppCompatActivity {
         Intent signInIntent = mGoogleSignInClient.getSignInIntent();
         signInLauncher.launch(signInIntent);
     }
+    private String getTimeIntervalForBox(int boxNumber) {
+        int startMinutes = (boxNumber - 1) * 10; // Each box represents 10 minutes
+        int startHour = startMinutes / 60;
+        int startMinute = startMinutes % 60;
+
+        int endMinutes = startMinutes + 10; // End time is 10 minutes later
+        int endHour = endMinutes / 60;
+        int endMinute = endMinutes % 60;
+
+        return String.format("%02d:%02d - %02d:%02d", startHour, startMinute, endHour, endMinute);
+    }
 
     private void showSignInDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -135,11 +152,18 @@ public class MainActivity extends AppCompatActivity {
         signInDialog.show(); // Show the dialog stored in the field
     }
     private void signOut() {
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.remove("userId"); // Remove the stored user ID
+        editor.apply();
+
         mGoogleSignInClient.signOut().addOnCompleteListener(this, task -> {
             // Update UI after sign out completes
             Toast.makeText(MainActivity.this, "Signed out successfully", Toast.LENGTH_SHORT).show();
             invalidateOptionsMenu();  // Force calling onPrepareOptionsMenu to update the menu item
         });
+
+
     }
 
 
@@ -170,17 +194,142 @@ public class MainActivity extends AppCompatActivity {
         try {
             GoogleSignInAccount account = completedTask.getResult(ApiException.class);
             setupGoogleSheetsService(account);
-            // Signed in successfully, show authenticated UI.
+
+            // Log user details
             Log.i("SignInSuccess", "Signed in as: " + account.getEmail());
+            Log.i("SignInSuccess", "Display Name: " + account.getDisplayName());
+            Log.i("SignInSuccess", "Given Name: " + account.getGivenName());
+            Log.i("SignInSuccess", "Family Name: " + account.getFamilyName());
+            Log.i("SignInSuccess", "Photo URL: " + (account.getPhotoUrl() != null ? account.getPhotoUrl().toString() : "No photo available"));
+            Log.i("SignInSuccess", "Google ID: " + account.getId());
+
+            // Signed in successfully, show authenticated UI.
+            String userId = account.getId();  // Get the unique ID from Google account
+            if (userId != null) {
+                SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);  // Store the ID in SharedPreferences
+                SharedPreferences.Editor editor = prefs.edit();
+                editor.putString("userId", userId);  // Save the user ID
+                editor.apply();  // Apply changes
+            }
+
+            Log.i("SignInSuccess", "Signed in as: " + account.getEmail());
+
+            // After saving the userId, check if the user has default labels
+            if(userId!=null) {
+                DatabaseReference labelsRef = FirebaseDatabase.getInstance().getReference("user_data").child(userId).child("labels");
+                DatabaseReference counterRef = FirebaseDatabase.getInstance().getReference("user_data").child(userId).child("labelCounter");
+
+                // Check if the labels node is empty (for first-time users)
+                labelsRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        if (!dataSnapshot.exists() || !dataSnapshot.hasChildren()) {
+                            // If no labels exist, set the default labels
+                            setDefaultLabels(userId, counterRef,getApplicationContext());
+                        }
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        Log.e("FirebaseError", "Error checking for labels", databaseError.toException());
+                    }
+                });
+            }
+            String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
+            fetchAllBoxesData(currentDate);
+            // Dismiss the sign-in dialog if it's showing
             if (signInDialog != null && signInDialog.isShowing()) {
                 signInDialog.dismiss();
             }
-            Toast.makeText(this, "Signed in successfully", Toast.LENGTH_SHORT).show();
+
+            // Notify user of successful sign-in
+            Toast.makeText(MainActivity.this, "Signed in successfully", Toast.LENGTH_SHORT).show();
+
         } catch (ApiException e) {
             Log.w("SignInFailure", "signInResult:failed code=" + e.getStatusCode());
             // Handle the exception here
         }
     }
+
+    // Method to set default labels for the user
+    private void setDefaultLabels(String userId, DatabaseReference counterRef, Context context) {
+        // Default labels data
+        List<Map<String, String>> defaultLabels = new ArrayList<>();
+        defaultLabels.add(createLabel("Y", "Youtube"));
+        defaultLabels.add(createLabel("🎥", "Instagram"));
+        defaultLabels.add(createLabel("🧘‍♂️", "Meditation"));
+        defaultLabels.add(createLabel("🏋️‍♂️", "Gym"));
+        defaultLabels.add(createLabel("🏃", "Running"));
+        defaultLabels.add(createLabel("🍜", "Food"));
+        defaultLabels.add(createLabel("📚", "Reading"));
+
+        // Insert default labels into Firebase
+        DatabaseReference labelsRef = FirebaseDatabase.getInstance().getReference("user_data").child(userId).child("labels");
+
+        // Read the current counter to use as the label key
+        counterRef.addListenerForSingleValueEvent(new ValueEventListener() {
+            @Override
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                Integer count = dataSnapshot.getValue(Integer.class);
+                if (count == null) count = 0;  // Default to 0 if not found
+
+                List<Map<String, String>> savedLabels = new ArrayList<>();
+
+                // Insert labels with the current counter as the index
+                for (Map<String, String> label : defaultLabels) {
+                    String labelKey = String.valueOf(count); // Use the current count as the label key
+                    labelsRef.child(labelKey).setValue(label);
+                    savedLabels.add(label);  // Add to list for SharedPreferences
+                    count++;  // Increment the counter for the next label
+                }
+
+                // Update the labelCounter to the new value after adding all default labels
+                counterRef.setValue(count);
+
+                // Save to SharedPreferences
+                saveToSharedPreferences(savedLabels, context);
+
+                // Optionally show a Toast message or log it
+                Toast.makeText(context, "Default labels added successfully!", Toast.LENGTH_SHORT).show();
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                Log.e("FirebaseError", "Error updating labelCounter", databaseError.toException());
+            }
+        });
+    }
+
+    private void saveToSharedPreferences(List<Map<String, String>> labelList, Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("MyAppPrefs", Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+
+        // Convert List<Map<String, String>> to List<EmojiData>
+        List<SettingsActivity.EmojiData> emojiDataList = new ArrayList<>();
+        for (Map<String, String> label : labelList) {
+            String emoji = label.get("emoji");
+            String text = label.get("text");
+            if (emoji != null && text != null) {
+                emojiDataList.add(new SettingsActivity.EmojiData(emoji, text));
+            }
+        }
+
+        // Convert List<EmojiData> to JSON
+        Gson gson = new Gson();
+        String json = gson.toJson(emojiDataList);
+        editor.putString("emoji_list", json);
+        editor.apply();
+    }
+
+
+    // Helper method to create a label map with emoji and text
+    private Map<String, String> createLabel(String emoji, String text) {
+        Map<String, String> label = new HashMap<>();
+        label.put("emoji", emoji);
+        label.put("text", text);
+        return label;
+    }
+
 
     private void setupGoogleSheetsService(GoogleSignInAccount account) {
         GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
@@ -195,16 +344,12 @@ public class MainActivity extends AppCompatActivity {
                 .build();
     }
     private void setupUI() {
-        box1TextView = findViewById(R.id.box_text_1);
-        box2TextView = findViewById(R.id.box_text_2);
-        box3TextView = findViewById(R.id.box_text_3);
-        box4TextView = findViewById(R.id.box_text_4);
-        box5TextView = findViewById(R.id.box_text_5);
-        box6TextView = findViewById(R.id.box_text_6);
-        box7TextView = findViewById(R.id.box_text_7);
-        box8TextView = findViewById(R.id.box_text_8);
-        box9TextView = findViewById(R.id.box_text_9);
-        box10TextView = findViewById(R.id.box_text_10);
+
+        for (int i = 0; i < 144; i++) {
+            String textViewId = "box_text_" + (i + 1); // Construct the ID name dynamically
+            @SuppressLint("DiscouragedApi") int resID = getResources().getIdentifier(textViewId, "id", getPackageName());
+            boxTextViews[i] = findViewById(resID);
+        }
         tvCurrentDate = findViewById(R.id.tv_current_date);
         datePicker = findViewById(R.id.date_picker);;
         toggleDatePicker = findViewById(R.id.toggle_date_picker);
@@ -268,7 +413,7 @@ public class MainActivity extends AppCompatActivity {
                         fetchAllBoxesData(formattedDate);
                     }
                 }, year, month, day);
-
+        datePickerDialog.getDatePicker().setMaxDate(System.currentTimeMillis());
         datePickerDialog.setOnDismissListener(dialog -> {
             // Check if the DatePickerDialog is dismissed without setting a date
             if (!datePickerDialog.isShowing()) {
@@ -285,15 +430,19 @@ public class MainActivity extends AppCompatActivity {
 //        fetchDataForDate(currentDate);  // Fetch data for the current date
     }
     private void fetchAllBoxesData(String currentDate) {
-        DatabaseReference dateRef = mDatabase.getReference("user_data").child("user1").child(currentDate);
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null); // Replace "defaultUser" with a fallback
+
+        if(userId != null){
+        DatabaseReference dateRef = mDatabase.getReference("user_data").child(userId).child(currentDate);
 
         dateRef.addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 // Check if there's data at this reference
                 if (!dataSnapshot.exists()) {
                     // If no data exists for any box, update all boxes to indicate no data
-                    updateAllTextViewsForNoData("No Data Available!");
+                    updateAllTextViewsForNoData();
                 } else {
                     // Process each box individually
                     processEachBox(dataSnapshot);
@@ -301,19 +450,27 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
+            public void onCancelled(@NonNull DatabaseError databaseError) {
                 Toast.makeText(MainActivity.this, "Failed to load data", Toast.LENGTH_SHORT).show();
             }
-        });
+        });}
     }
 
     private void processEachBox(DataSnapshot dataSnapshot) {
-        TextView[] allTextViews = {box1TextView, box2TextView, box3TextView, box4TextView, box5TextView,
-                box6TextView, box7TextView, box8TextView, box9TextView, box10TextView};
-        for (int i = 0; i < allTextViews.length; i++) {
+        TextView[] boxTextViews = new TextView[144];
+
+        // Initialize all TextViews dynamically
+        for (int i = 0; i < 144; i++) {
+            String textViewId = "box_text_" + (i + 1);
+            @SuppressLint("DiscouragedApi") int resID = getResources().getIdentifier(textViewId, "id", getPackageName());
+            boxTextViews[i] = findViewById(resID);
+        }
+
+        // Process each box and update the UI
+        for (int i = 0; i < boxTextViews.length; i++) {
             String boxKey = "box" + (i + 1);
             DataSnapshot boxSnapshot = dataSnapshot.child(boxKey);
-            TextView boxTextView = allTextViews[i];
+            TextView boxTextView = boxTextViews[i];
 
             if (boxTextView != null) {
                 if (boxSnapshot.exists() && boxSnapshot.hasChildren()) {
@@ -321,37 +478,53 @@ public class MainActivity extends AppCompatActivity {
                     if (boxData != null) {
                         updateBoxData(boxTextView, boxData, boxKey);
                     } else {
-                        boxTextView.setText(boxKey + " | 😢 | No Data Available!");
+                        String timeInterval = getTimeIntervalForBox(i + 1);
+                        boxTextView.setText(timeInterval + " | 😢 | No Data Available!");
                     }
                 } else {
-                    boxTextView.setText(boxKey + " | 😢 | No Data Available!");
+                    String timeInterval = getTimeIntervalForBox(i + 1);
+                    boxTextView.setText(timeInterval + " | 😢 | No Data Available!");
                 }
             }
         }
     }
 
 
-    private void updateAllTextViewsForNoData(String message) {
-        TextView[] allTextViews = {
-                box1TextView, box2TextView, box3TextView, box4TextView, box5TextView,
-                box6TextView, box7TextView, box8TextView, box9TextView, box10TextView
-        };
 
-        for (TextView textView : allTextViews) {
+    private void updateAllTextViewsForNoData() {
+        TextView[] boxTextViews = new TextView[144];
+
+        // Initialize all TextViews dynamically
+        for (int i = 0; i < 144; i++) {
+            String textViewId = "box_text_" + (i + 1);
+            @SuppressLint("DiscouragedApi") int resID = getResources().getIdentifier(textViewId, "id", getPackageName());
+            boxTextViews[i] = findViewById(resID);
+        }
+
+        // Update each TextView with the no-data message
+        for (int i = 0; i < boxTextViews.length; i++) {
+            TextView textView = boxTextViews[i];
             if (textView != null) {
-                String tag = (textView.getTag() != null) ? textView.getTag().toString() : "Default Tag";
-                textView.setText(tag + " | 😢 | " + message);
+                String timeInterval = getTimeIntervalForBox(i + 1); // Convert box number to time interval
+                textView.setText(timeInterval + " | 😢 | " + "No Data Available!");
             }
         }
     }
 
+
     private void updateBoxData(TextView boxTextView, BoxData boxData, String boxId) {
-        DatabaseReference labelsRef = mDatabase.getReference("user_data").child("user1").child("labels");
+        // Get user ID from SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null); // Use default if user is not signed in
+
+        // Update Firebase reference to use the dynamic userId
+        if(userId != null){
+        DatabaseReference labelsRef = mDatabase.getReference("user_data").child(userId).child("labels");
         String labelName = boxData.getSelectedOption(); // labelName contains the label name directly
 
         labelsRef.orderByChild("text").equalTo(labelName).addListenerForSingleValueEvent(new ValueEventListener() {
             @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
+            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                 String emoji = "🤨"; // Default emoji if no match is found
                 String lbl_nam="";
                 if (dataSnapshot.exists()) {
@@ -361,16 +534,23 @@ public class MainActivity extends AppCompatActivity {
                         break; // Assume the first match is the correct one since label names should be unique
                     }
                 }
-                String displayText = boxId + " | "+lbl_nam + " " + emoji + " | " + boxData.getData();
+
+                int boxNumber = Integer.parseInt(boxId.replace("box", ""));
+                String timeInterval = getTimeIntervalForBox(boxNumber); // Get the time range
+
+                String displayText = timeInterval + " | " + lbl_nam + " " + emoji + " | " + boxData.getData();
                 boxTextView.setText(displayText);
             }
 
             @Override
-            public void onCancelled(DatabaseError databaseError) {
-                boxTextView.setText(boxId + " | 🤨 | " + boxData.getData());
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                int boxNumber = Integer.parseInt(boxId.replace("box", ""));
+                String timeInterval = getTimeIntervalForBox(boxNumber);
+                boxTextView.setText(timeInterval + " | 🤨 | " + boxData.getData());
                 Toast.makeText(MainActivity.this, "Failed to fetch emoji", Toast.LENGTH_SHORT).show();
             }
         });
+        }
     }
 
     @Override
@@ -427,80 +607,111 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void fetchDataFromFirebase() {
+        // Get user ID from SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null); // Use default if user is not signed in
+
+        // Update Firebase reference to use the dynamic userId
         FirebaseDatabase database = FirebaseDatabase.getInstance();
-        DatabaseReference ref = database.getReference("user_data/user1");
-        Toast.makeText(MainActivity.this, "Fetching Data...", Toast.LENGTH_SHORT).show();
-        ref.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                List<List<Object>> rows = new ArrayList<>();
-                for (DataSnapshot dateSnapshot : dataSnapshot.getChildren()) {
-                    Log.d("test_input", dateSnapshot.toString());
-                    String date = dateSnapshot.getKey().toString();
-                    if(date.length()==10) {
-                        for (DataSnapshot boxSnapshot : dateSnapshot.getChildren()) {
-                            Object rawValue = boxSnapshot.getValue();
-                            Log.d("test_input_1", rawValue.toString());
-                            if (rawValue instanceof Map) {
-                                Map<String, Object> boxData = (Map<String, Object>) rawValue;
-                                List<Object> rowData = new ArrayList<>();
-                                rowData.add(date);
-                                rowData.add(boxSnapshot.getKey());
-                                rowData.add(boxData.get("data"));
-                                rowData.add(boxData.get("selectedOption"));
+        if(userId != null) {
+            DatabaseReference ref = database.getReference("user_data").child(userId);
+            Toast.makeText(MainActivity.this, "Fetching Data...", Toast.LENGTH_SHORT).show();
+            ref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    List<List<Object>> rows = new ArrayList<>();
+                    for (DataSnapshot dateSnapshot : dataSnapshot.getChildren()) {
+                        Log.d("test_input", dateSnapshot.toString());
+                        String date = dateSnapshot.getKey();
+                        assert date != null;
+                        if (date.length() == 10) {
+                            for (DataSnapshot boxSnapshot : dateSnapshot.getChildren()) {
+                                Object rawValue = boxSnapshot.getValue();
+                                assert rawValue != null;
+                                Log.d("test_input_1", rawValue.toString());
+                                if (rawValue instanceof Map) {
+                                    Map<String, Object> boxData = (Map<String, Object>) rawValue;
+                                    List<Object> rowData = new ArrayList<>();
+                                    rowData.add(date);
+                                    rowData.add(boxSnapshot.getKey());
+                                    rowData.add(boxData.get("data"));
+                                    rowData.add(boxData.get("selectedOption"));
 //                                rowData.add(boxData.get("timestamp"));
-                                rows.add(rowData);
-                            } else {
-                                Log.e("DataError", "Unexpected data type in Firebase: " + rawValue.getClass().getName());
+                                    rows.add(rowData);
+                                } else {
+                                    Log.e("DataError", "Unexpected data type in Firebase: " + rawValue.getClass().getName());
+                                }
                             }
                         }
                     }
+                    writeToGoogleSheet(rows);
                 }
-                writeToGoogleSheet(rows);
-            }
 
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.w("FirebaseData", "loadPost:onCancelled", databaseError.toException());
-                Toast.makeText(MainActivity.this, "Fetching Data Failed!", Toast.LENGTH_SHORT).show();
-            }
-        });
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    Log.w("FirebaseData", "loadPost:onCancelled", databaseError.toException());
+                    Toast.makeText(MainActivity.this, "Fetching Data Failed!", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
     private void writeToGoogleSheet(List<List<Object>> data) {
-        String userId = "user1"; // Replace with FirebaseAuth.getInstance().getCurrentUser().getUid(); for actual user IDs
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users").child(userId).child("spreadsheetId");
-        Toast.makeText(MainActivity.this, "Writing Data...", Toast.LENGTH_SHORT).show();
-        ref.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                String spreadsheetId = dataSnapshot.getValue(String.class);
-                if (spreadsheetId == null || spreadsheetId.isEmpty()) {
-                    // No Spreadsheet ID found, create a new spreadsheet
-                    GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
-                            MainActivity.this, Collections.singletonList(SheetsScopes.SPREADSHEETS));
-                    credential.setSelectedAccountName(GoogleSignIn.getLastSignedInAccount(MainActivity.this).getEmail());
-                    createNewSpreadsheet(credential, data);
-                } else {
-                    // Spreadsheet ID exists, proceed to update
-                    updateSpreadsheet(spreadsheetId, data);
-                }
-            }
+        // Get user ID from SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null); // Use default if user is not signed in
 
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                Log.e("Firebase", "Failed to read spreadsheet ID", databaseError.toException());
-                Toast.makeText(MainActivity.this, "Writing Data Failed!", Toast.LENGTH_SHORT).show();
-            }
-        });
+        // Update Firebase reference to use the dynamic userId
+        if(userId != null) {
+            DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users").child(userId).child("spreadsheetId");
+
+            // Show Toast to indicate that data is being written
+            Toast.makeText(MainActivity.this, "Writing Data...", Toast.LENGTH_SHORT).show();
+            ref.addListenerForSingleValueEvent(new ValueEventListener() {
+                @Override
+                public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                    String spreadsheetId = dataSnapshot.getValue(String.class);
+                    if (spreadsheetId == null || spreadsheetId.isEmpty()) {
+                        // No Spreadsheet ID found, create a new spreadsheet
+                        GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
+                                MainActivity.this, Collections.singletonList(SheetsScopes.SPREADSHEETS));
+                        credential.setSelectedAccountName(Objects.requireNonNull(GoogleSignIn.getLastSignedInAccount(MainActivity.this)).getEmail());
+                        createNewSpreadsheet(credential, data);
+                    } else {
+                        // Spreadsheet ID exists, proceed to update
+                        updateSpreadsheet(spreadsheetId, data);
+                    }
+                }
+
+                @Override
+                public void onCancelled(@NonNull DatabaseError databaseError) {
+                    Log.e("Firebase", "Failed to read spreadsheet ID", databaseError.toException());
+                    Toast.makeText(MainActivity.this, "Writing Data Failed!", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
 
     private void saveSpreadsheetIdToFirebase(String spreadsheetId) {
-//        String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-        String userId = "user1";
-        DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users").child(userId);
-        ref.child("spreadsheetId").setValue(spreadsheetId);
+        // Get user ID from SharedPreferences
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null); // Use default if user is not signed in
+
+        // Update Firebase reference to use the dynamic userId
+        if(userId != null) {
+            DatabaseReference ref = FirebaseDatabase.getInstance().getReference("users").child(userId);
+
+            // Save the spreadsheetId to Firebase for the logged-in user
+            ref.child("spreadsheetId").setValue(spreadsheetId).addOnCompleteListener(task -> {
+                if (task.isSuccessful()) {
+                    Toast.makeText(MainActivity.this, "Spreadsheet ID saved successfully", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Failed to save Spreadsheet ID", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
     }
+
 
 
     private void createNewSpreadsheet(GoogleAccountCredential credential, List<List<Object>> data) {

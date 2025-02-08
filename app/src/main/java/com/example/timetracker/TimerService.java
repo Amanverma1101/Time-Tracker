@@ -45,15 +45,24 @@ public class TimerService extends Service {
         TimeTrackerWidget.isRunningCurrently = true;
         final RemoteViews views = new RemoteViews(getPackageName(), R.layout.time_tracker_widget);
         final AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
+        final String[] rotatingEmojis = {"🕛", "🕒", "🕕", "🕘"};
+
         new CountDownTimer(9500, 1000) {  // 10 seconds for demo
+            int index=0;
             public void onTick(long millisUntilFinished) {
                 String timeLeft = String.format("%02d:%02d", (millisUntilFinished / 1000) / 60, (millisUntilFinished / 1000) % 60);
                 views.setTextViewText(R.id.timer_display, timeLeft);
+                int emojiTextViewId = getBoxImageViewId(boxId);
+                if (emojiTextViewId != -1) {
+                    views.setTextViewText(emojiTextViewId, rotatingEmojis[index]);
+                    index = (index + 1) % rotatingEmojis.length; // Cycle through emojis
+                }
                 appWidgetManager.updateAppWidget(new ComponentName(TimerService.this, TimeTrackerWidget.class), views);
             }
 
             public void onFinish() {
                 views.setTextViewText(R.id.timer_display, "00:00");
+                views.setTextViewText(getBoxImageViewId(boxId), "⌛");
                 TimeTrackerWidget.isRunningCurrently = false;
                 appWidgetManager.updateAppWidget(new ComponentName(TimerService.this, TimeTrackerWidget.class), views);
                 playBuzzer();
@@ -63,6 +72,17 @@ public class TimerService extends Service {
                 stopSelf();
             }
         }.start();
+    }
+    private int getBoxImageViewId(int boxPosition) {
+        int[] imageViewIds = {
+                R.id.imageView1, R.id.imageView2, R.id.imageView3, R.id.imageView4, R.id.imageView5, R.id.imageView6,
+                R.id.imageView7, R.id.imageView8, R.id.imageView9, R.id.imageView10, R.id.imageView11, R.id.imageView12,
+                R.id.imageView13, R.id.imageView14, R.id.imageView15, R.id.imageView16, R.id.imageView17, R.id.imageView18,
+                R.id.imageView19, R.id.imageView20, R.id.imageView21, R.id.imageView22, R.id.imageView23, R.id.imageView24,
+                R.id.imageView25, R.id.imageView26, R.id.imageView27, R.id.imageView28, R.id.imageView29, R.id.imageView30,
+                R.id.imageView31, R.id.imageView32, R.id.imageView33, R.id.imageView34, R.id.imageView35, R.id.imageView36
+        };
+        return (boxPosition > 0 && boxPosition <= imageViewIds.length) ? imageViewIds[boxPosition - 1] : -1;
     }
 
     private Notification buildNotification(int boxId) {

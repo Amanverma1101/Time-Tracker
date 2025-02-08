@@ -26,6 +26,7 @@ import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -61,7 +62,7 @@ public class PopupActivity extends AppCompatActivity {
         // Example string array
 //        String[] values = new String[] {"YouTube", "Instagram", "Meditation", "Food", "Gym", "Reading", "Running"};
         FirebaseDatabase firebaseDatabase = FirebaseDatabase.getInstance();
-        String userId = "user1";
+
         // Get the NumberPicker reference
         NumberPicker numberPicker = findViewById(R.id.number_picker);
         setupNumberPicker(numberPicker);
@@ -91,11 +92,25 @@ public class PopupActivity extends AppCompatActivity {
                 updateIntent.putExtra("INPUT_EMOJI", emojiList.get(selectedNumber));
                 updateIntent.putExtra("INPUT_VALUE", inputValue);
                 getApplicationContext().sendBroadcast(updateIntent);
+
+//                Intent refreshIntent = new Intent(getApplicationContext(), TimeTrackerWidget.class);
+//                refreshIntent.setAction(TimeTrackerWidget.ACTION_REFRESH_WIDGET);
+//                getApplicationContext().sendBroadcast(refreshIntent);
+
                 saveDataToFirebase(inputValue, selectedNumber, boxPosition, timestamp);
                 finish();
             }
         });
 
+    }
+    public int getCurrentTimeSegment() {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+
+        if (hour >= 0 && hour < 6) return 1;   // 00:00 - 06:00
+        if (hour >= 6 && hour < 12) return 2;  // 06:00 - 12:00
+        if (hour >= 12 && hour < 18) return 3; // 12:00 - 18:00
+        return 4;                              // 18:00 - 00:00
     }
 
     private void setupNumberPicker(NumberPicker numberPicker) {
@@ -197,24 +212,31 @@ public class PopupActivity extends AppCompatActivity {
         String currentDate = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault()).format(new Date());
 
         // Default user ID (replace with Firebase user ID if needed)
-        String userId = "user1";
+//        String userId = "user1";
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null);
         if (mDatabase == null) {
             Log.e("PopupActivityDebug", "FirebaseDatabase instance is null!");
             return;
         }
-        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("user_data").child(userId);
-        BoxData boxData = new BoxData(inputValue, valuesList.get(selectedOption), timestamp);
-        databaseReference.child(currentDate).child("box" + boxPosition).setValue(boxData)
-                .addOnCompleteListener(task -> {
-                    if (task.isSuccessful()) {
-                        Log.d("FirebaseDebug", "Data saved successfully!");
-                        Toast.makeText(this, "Data saved successfully", Toast.LENGTH_SHORT).show();
-                    } else {
-                        Log.e("FirebaseDebug", "Error saving data", task.getException());
-                        Toast.makeText(this, "Error saving data", Toast.LENGTH_SHORT).show();
-                    }
-                });
+        int currentSegment = getCurrentTimeSegment();
+        if(userId!=null) {
+            DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference("user_data").child(userId);
+            BoxData boxData = new BoxData(inputValue, valuesList.get(selectedOption), timestamp);
+            databaseReference.child(currentDate).child("box" + ((currentSegment - 1) * 36 + boxPosition)).setValue(boxData)
+                    .addOnCompleteListener(task -> {
+                        if (task.isSuccessful()) {
+                            Log.d("FirebaseDebug", "Data saved successfully!");
+                            Toast.makeText(this, "Data saved successfully", Toast.LENGTH_SHORT).show();
+                        } else {
+                            Log.e("FirebaseDebug", "Error saving data", task.getException());
+                            Toast.makeText(this, "Error saving data", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+        }
     }
+
+
 
 
 }

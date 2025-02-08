@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="com.example.timetracker">
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
     <application
         android:allowBackup="true"
@@ -31,6 +31,11 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/time_tracker_widget_info" />
         </receiver>
+
+
+
+
+
 
         <!-- MainActivity -->
         <activity

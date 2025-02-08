@@ -116,41 +116,45 @@ public class SettingsActivity extends AppCompatActivity {
             return;
         }
 
-        String userId = "user1";
-        DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null);
+        if(userId != null) {
+            DatabaseReference labelsRef = firebaseDatabase.getReference("user_data").child(userId).child("labels");
 
-        labelsRef.addValueEventListener(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                labelContainer.removeAllViews(); // Clears existing views
-                List<EmojiData> labelList = new ArrayList<>();
+            labelsRef.addValueEventListener(new ValueEventListener() {
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    labelContainer.removeAllViews(); // Clears existing views
+                    List<EmojiData> labelList = new ArrayList<>();
 
-                for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
-                    GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {};
-                    Map<String, String> labelData = snapshot.getValue(t);
-                    if (labelData != null) {
-                        String label = labelData.get("text");
-                        String emoji = labelData.get("emoji");
-                        if (label != null) {
-                            FrameLayout labelView = createLabelView(label, emoji, R.drawable.def);
-                            String key = snapshot.getKey();
-                            labelContainer.addView(labelView);
-                            labelList.add(new EmojiData(emoji, label));
-                            labelView.setOnLongClickListener(v -> {
-                                showPopup(v, label, key);
-                                return true;
-                            });
+                    for (DataSnapshot snapshot : dataSnapshot.getChildren()) {
+                        GenericTypeIndicator<Map<String, String>> t = new GenericTypeIndicator<Map<String, String>>() {
+                        };
+                        Map<String, String> labelData = snapshot.getValue(t);
+                        if (labelData != null) {
+                            String label = labelData.get("text");
+                            String emoji = labelData.get("emoji");
+                            if (label != null) {
+                                FrameLayout labelView = createLabelView(label, emoji, R.drawable.def);
+                                String key = snapshot.getKey();
+                                labelContainer.addView(labelView);
+                                labelList.add(new EmojiData(emoji, label));
+                                labelView.setOnLongClickListener(v -> {
+                                    showPopup(v, label, key);
+                                    return true;
+                                });
+                            }
                         }
                     }
+                    saveEmojiList(labelList); // Save data locally
                 }
-                saveEmojiList(labelList); // Save data locally
-            }
 
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                loadLabelsFromLocalStorage();
-            }
-        });
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+                    loadLabelsFromLocalStorage();
+                }
+            });
+        }
     }
 
     private void loadLabelsFromLocalStorage() {
@@ -224,7 +228,8 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void deleteLabel(View labelView, String key) {
-        String userId = "user1";
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null);
         DatabaseReference labelRef = firebaseDatabase.getReference("user_data").child(userId).child("labels").child(key);
         labelRef.removeValue().addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
@@ -262,7 +267,9 @@ public class SettingsActivity extends AppCompatActivity {
     }
 
     private void updateLabelInFirebase(String key, String newLabel) {
-        DatabaseReference labelRef = firebaseDatabase.getReference("user_data").child("user1").child("labels").child(key);
+        SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+        String userId = prefs.getString("userId", null);
+        DatabaseReference labelRef = firebaseDatabase.getReference("user_data").child(userId).child("labels").child(key);
         labelRef.setValue(newLabel).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
                 Toast.makeText(getApplicationContext(), "Label updated successfully", Toast.LENGTH_SHORT).show();
@@ -372,42 +379,45 @@ public class SettingsActivity extends AppCompatActivity {
             btnAddNew.setText("Add New");
             isAddingNew = false;
 
-            String userId = "user1";
-            DatabaseReference rootRef = firebaseDatabase.getReference("user_data").child(userId);
-            DatabaseReference labelsRef = rootRef.child("labels");
-            DatabaseReference counterRef = rootRef.child("labelCounter");
+            SharedPreferences prefs = getSharedPreferences("UserPrefs", MODE_PRIVATE);
+            String userId = prefs.getString("userId", null);
+            if(userId != null) {
+                DatabaseReference rootRef = firebaseDatabase.getReference("user_data").child(userId);
+                DatabaseReference labelsRef = rootRef.child("labels");
+                DatabaseReference counterRef = rootRef.child("labelCounter");
 
 
-            // Read the current counter
-            counterRef.addListenerForSingleValueEvent(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    Integer count = dataSnapshot.getValue(Integer.class);
-                    if (count == null) count = 0;  // Default to 0 if not found
+                // Read the current counter
+                counterRef.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Integer count = dataSnapshot.getValue(Integer.class);
+                        if (count == null) count = 0;  // Default to 0 if not found
 
-                    // Use count as the label key
-                    Map<String, Object> labelData = new HashMap<>();
-                    labelData.put("text", label);
-                    labelData.put("emoji", emoji);
+                        // Use count as the label key
+                        Map<String, Object> labelData = new HashMap<>();
+                        labelData.put("text", label);
+                        labelData.put("emoji", emoji);
 
-                    Integer finalCount = count;
-                    labelsRef.child(String.valueOf(count)).setValue(labelData)
-                            .addOnCompleteListener(task -> {
-                                if (task.isSuccessful()) {
-                                    Toast.makeText(getApplicationContext(), "Label and emoji saved successfully", Toast.LENGTH_SHORT).show();
-                                    // Increment the counter after successful save
-                                    counterRef.setValue(finalCount + 1);
-                                } else {
-                                    Toast.makeText(getApplicationContext(), "Error saving label and emoji", Toast.LENGTH_SHORT).show();
-                                }
-                            });
-                }
+                        Integer finalCount = count;
+                        labelsRef.child(String.valueOf(count)).setValue(labelData)
+                                .addOnCompleteListener(task -> {
+                                    if (task.isSuccessful()) {
+                                        Toast.makeText(getApplicationContext(), "Label and emoji saved successfully", Toast.LENGTH_SHORT).show();
+                                        // Increment the counter after successful save
+                                        counterRef.setValue(finalCount + 1);
+                                    } else {
+                                        Toast.makeText(getApplicationContext(), "Error saving label and emoji", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                    }
 
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                    Toast.makeText(getApplicationContext(), "Error accessing the database: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
-                }
-            });
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+                        Toast.makeText(getApplicationContext(), "Error accessing the database: " + databaseError.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
         } else {
             Toast.makeText(getApplicationContext(), "Label and emoji can't be empty, emoji must be a single character...", Toast.LENGTH_SHORT).show();
             isAddingNew = false; // Reset the flag when cancel is clicked
